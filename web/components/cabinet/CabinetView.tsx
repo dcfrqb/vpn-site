@@ -9,6 +9,7 @@ const BARS_M = 20; // phones get a shorter meter so the last lit bar is never cu
 const NEAR_LIMIT = 0.85;
 const SOON_DAYS = 7;
 const ENDED = new Set(["expired", "disabled"]);
+const URGENT_DAYS = 3;
 
 export const kindLabel = (kind: string) => (kind === "obhod" ? "ru-вход" : "основная");
 
@@ -73,8 +74,10 @@ function Screen({ sub, used }: { sub: CabinetSubscription; used: number }) {
   const raw = (sub.plan_title || sub.plan_code || "подписка").toLowerCase();
   // The obhod title repeats the kind label ("RU-вход"); show its monthly limit instead.
   const title = raw === kindLabel(sub.kind) ? (lim ? `${gb(lim, 0)} гб в месяц` : "") : raw;
+  // The whole display changes color: orange in the last URGENT_DAYS days, red once it has ended.
+  const tone = ENDED.has(sub.status) ? "ended" : active && !sub.is_lifetime && days <= URGENT_DAYS ? "urgent" : null;
   return (
-    <section className="screen cb-screen" aria-label={`Подписка: ${kindLabel(sub.kind)}`}>
+    <section className={`screen cb-screen${tone ? ` is-${tone}` : ""}`} aria-label={`Подписка: ${kindLabel(sub.kind)}`}>
       <div className="scr-top">
         <span className={active ? "on" : undefined}>
           <i className={`lamp${active ? " on" : ""}`} aria-hidden="true" />
