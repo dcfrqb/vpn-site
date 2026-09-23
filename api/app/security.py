@@ -82,6 +82,7 @@ class RateLimiter:
 
     LIMITS = {
         "login": (10, 15 * 60),
+        "email_check": (20, 15 * 60),
         "register": (5, 60 * 60),
         "forgot": (3, 60 * 60),
         "passkey": (20, 15 * 60),

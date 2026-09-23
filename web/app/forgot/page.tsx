@@ -3,7 +3,11 @@ import ForgotForm from "@/components/auth/ForgotForm";
 
 export const metadata = { title: "сброс пароля · crs·vpn" };
 
-export default function ForgotPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ForgotPage({ searchParams }: { searchParams: Promise<{ email?: string | string[] }> }) {
+  const raw = (await searchParams).email;
+  const email = typeof raw === "string" ? raw.slice(0, 320) : "";
   return (
     <AuthShell
       code="crs–01 · сброс"
@@ -15,7 +19,7 @@ export default function ForgotPage() {
         </p>
       }
     >
-      <ForgotForm />
+      <ForgotForm initialEmail={email} />
     </AuthShell>
   );
 }

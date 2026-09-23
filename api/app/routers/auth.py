@@ -88,6 +88,15 @@ async def register(body: Credentials, request: Request, response: Response, conn
     return {"account": await account_json(conn, await get_account(conn, acc["id"]))}
 
 
+@router.post("/email/check")
+async def email_check(body: EmailIn, request: Request, conn: Conn):
+    """First step of the single email form: sign in or create an account."""
+    limiter.hit("email_check", client_host(request))
+    email = normalize_email(body.email)
+    acc = await conn.fetchrow("select password_hash from web.accounts where email = $1", email)
+    return {"exists": acc is not None, "has_password": bool(acc and acc["password_hash"])}
+
+
 @router.post("/login")
 async def login(body: Credentials, request: Request, response: Response, conn: Conn):
     email = body.email.strip().lower()

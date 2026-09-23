@@ -38,6 +38,7 @@ Out of scope here: payments (needs YooKassa test shop keys), admin (stage 4), re
 All JSON. Errors: `{"error": "<code>", "message": "<russian text for the user>"}`.
 
 Auth:
+- `POST /api/auth/email/check` `{email}` → `{exists, has_password}` (rate limit 20/15min per IP).
 - `POST /api/auth/register` `{email, password}` → 201 `{account}` + session cookie. Sends verify email to outbox.
 - `POST /api/auth/login` `{email, password}` → 200 `{account}` + cookie. 401 `invalid_credentials`.
 - `POST /api/auth/logout` → 204.
@@ -67,7 +68,7 @@ Cabinet (session required; data from the bot gateway by `telegram_id`):
 
 Pages (mobile 390px and desktop 1280px both required):
 - `/login`: three methods on one screen: Telegram widget (`@crs_vpn_bot`), email + password form, "войти по паскею" button. Link to `/register` and `/forgot`.
-- `/register`: email + password (+ repeat), consent checkbox for the personal data policy (required).
+- `/register` redirects to `/login`. The email block on `/login` is one form: email → `POST /api/auth/email/check` → password (existing account) or new password + repeat + consent (new account).
 - `/forgot`, `/reset?token=`, `/verify?token=`.
 - `/cabinet`: display-style screen from the mockup (days left, traffic bars, nodes), subscription link with copy, devices, payments. `demo` badge "пример" while data is mock. Empty state without telegram: explain and offer "привязать telegram" and "выбрать тариф".
 - `/cabinet/settings`: email and password, telegram link/unlink (widget), passkeys list + "добавить паскей", active sessions with revoke, "выйти везде".

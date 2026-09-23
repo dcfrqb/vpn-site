@@ -353,3 +353,19 @@ def test_register_rate_limit(client):
 def test_migrations_recorded(client):
     rows = run_sql("select version from web.schema_migrations")
     assert [r["version"] for r in rows] == ["0001_init"]
+
+
+def test_email_check(client):
+    r = client.post("/api/auth/email/check", json={"email": "New@Example.com"})
+    assert r.json() == {"exists": False, "has_password": False}
+    register(client)
+    r = client.post("/api/auth/email/check", json={"email": " USER@example.com"})
+    assert r.json() == {"exists": True, "has_password": True}
+    assert client.post("/api/auth/email/check", json={"email": "nope"}).status_code == 400
+
+
+def test_email_check_rate_limit(client):
+    for _ in range(20):
+        client.post("/api/auth/email/check", json={"email": "a@example.com"})
+    r = client.post("/api/auth/email/check", json={"email": "a@example.com"})
+    assert r.status_code == 429

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { api } from "@/lib/client";
 
-export default function ForgotForm() {
-  const [email, setEmail] = useState("");
+export default function ForgotForm({ initialEmail = "" }: { initialEmail?: string }) {
+  const [email, setEmail] = useState(initialEmail);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);

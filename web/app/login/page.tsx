@@ -1,5 +1,5 @@
 import AuthShell from "@/components/auth/AuthShell";
-import LoginForm from "@/components/auth/LoginForm";
+import EmailAuth from "@/components/auth/EmailAuth";
 import PasskeyLogin from "@/components/auth/PasskeyLogin";
 import TelegramLogin from "@/components/auth/TelegramLogin";
 import { safeNext } from "@/lib/next-path";
@@ -11,7 +11,6 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
   const next = safeNext((await searchParams).next);
   await redirectIfSignedIn(next);
-  const q = next === "/cabinet" ? "" : `?next=${encodeURIComponent(next)}`;
 
   return (
     <AuthShell
@@ -19,12 +18,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       title="вход"
       lede={
         <p>
-          один аккаунт, три способа войти. если подписка уже есть в боте, войди через telegram, и она сразу появится в кабинете.
-        </p>
-      }
-      aside={
-        <p className="auth-alt">
-          нет аккаунта? <a href={`/register${q}`}>зарегистрируйся по email</a>
+          вход и регистрация в одном месте. если подписка уже есть в боте, войди через telegram, и она сразу появится в кабинете. нет аккаунта? введи email, создадим.
         </p>
       }
     >
@@ -33,8 +27,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <TelegramLogin mode="login" next={next} />
       </section>
       <section className="method">
-        <h3 className="caps">02 · email и пароль</h3>
-        <LoginForm next={next} />
+        <h3 className="caps">02 · email</h3>
+        <EmailAuth next={next} />
       </section>
       <section className="method">
         <h3 className="caps">03 · паскей</h3>
