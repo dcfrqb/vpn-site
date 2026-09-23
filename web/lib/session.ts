@@ -5,7 +5,7 @@ import type { Account, CabinetData, SessionInfo } from "./types";
 
 const API = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8040";
 
-type Result<T> = { state: "ok"; data: T } | { state: "anon" } | { state: "down" };
+type Result<T> = { state: "ok"; data: T } | { state: "anon" } | { state: "down"; status: number };
 
 // Server-side call to the api with the visitor's cookie forwarded.
 async function authed<T>(path: string): Promise<Result<T>> {
@@ -17,10 +17,10 @@ async function authed<T>(path: string): Promise<Result<T>> {
       signal: AbortSignal.timeout(4000),
     });
     if (res.status === 401) return { state: "anon" };
-    if (!res.ok) return { state: "down" };
+    if (!res.ok) return { state: "down", status: res.status };
     return { state: "ok", data: (await res.json()) as T };
   } catch {
-    return { state: "down" };
+    return { state: "down", status: 0 };
   }
 }
 
@@ -44,5 +44,6 @@ export async function redirectIfSignedIn(to: string): Promise<void> {
   if (me.state === "ok") redirect(to);
 }
 
+// 503 here means the api is up but the bot did not answer (error bot_unavailable).
 export const getCabinet = () => authed<CabinetData>("/api/cabinet");
 export const getSessions = () => authed<SessionInfo[]>("/api/me/sessions");

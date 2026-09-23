@@ -1,7 +1,7 @@
 # Stage 3: auth and cabinet
 
 Scope: sign-in with Telegram, email + password, passkey; account settings; cabinet on mock bot data.
-Out of scope here: payments (needs YooKassa test shop keys), admin (stage 4), real bot data (after bot 3.0).
+Out of scope here: payments (needs YooKassa test shop keys), admin (stage 4). Real data: bot profile + Remnawave panel when `BOT_API_URL` and `REMNAWAVE_API_URL` are set (`docs/cabinet-data.md`).
 
 ## Architecture
 
@@ -61,8 +61,18 @@ Me (session required, else 401 `unauthorized`):
 - `GET /api/me/sessions` → `[{id, current, created_at, last_seen_at, ip, user_agent}]` (id = short public id, not the token).
 - `DELETE /api/me/sessions/{id}` → 204.
 
-Cabinet (session required; data from the bot gateway by `telegram_id`):
-- `GET /api/cabinet` → `{linked: bool, subscription: {plan, status, valid_until, days_left, device_limit, sub_url, traffic_month_gb} | null, devices: [{name, last_seen_at}], payments: [{date, plan, months, amount_rub, status}], nodes: [{name, country, online, ping_ms}], demo: true}`. Without telegram: `linked:false`, other fields empty. The mock returns deterministic demo data per telegram id and always sets `demo: true`.
+Cabinet (session required; data by the account's `telegram_id`, never by a client-supplied id). Where the data comes from: `docs/cabinet-data.md`.
+- `GET /api/cabinet` → `{linked: bool, demo: bool, data: Cabinet | null}`.
+  - `data` shape (same as `Servers/docs/САЙТ_2026-09-23/bot-site-cabinet-api-spec.md`): `generated_at, partial, errors[], user, subscriptions[], devices[], traffic_daily[30], traffic_by_node[], payments[] (newest first), stats, nodes[]`.
+  - `subscriptions[]`: `kind (main|obhod), plan_code, plan_title, legacy, status (active|expired|disabled|limited|unknown), valid_until, is_lifetime, days_left, device_limit, sub_url, traffic {used_bytes, limit_bytes, reset (month|day|week|none), month_used_bytes}, package, online_at, last_node`. Lifetime = panel `expireAt` year >= 2099: `valid_until` and `days_left` null.
+  - `devices[]`: `subscription, hwid, platform, os_version, model, app, first_seen_at, last_seen_at` (never the device IP).
+  - No telegram on the account: `{linked: false, data: null}`.
+  - Bot answers 404 (it does not know this telegram id): `{linked: true, data: null}`, the page shows "в боте пока нет подписки".
+  - Bot unreachable, timeout (3 s), 5xx or unparseable: 503 `bot_unavailable` (ownership comes from the bot, nothing is shown without it).
+  - Panel unreachable (4 s) or broken: 200 with `partial: true, errors: ["panel"]`; subscriptions keep bot fields with `status: "unknown"`, live fields null or empty.
+  - `demo: true` while the mock gateway is in use (`BOT_API_URL` or `REMNAWAVE_API_URL` empty). The mock returns deterministic demo data per telegram id in the same shape.
+- `DELETE /api/cabinet/devices/{hwid}` (hwid url-encoded) → 204 only if the hwid is in the device list of one of this user's panel accounts (from the bot profile), then the panel deletes it. 404 `device_not_found` otherwise (also without telegram). 503 `bot_unavailable` if the bot or the panel fails. Audit event `device_delete`, `meta = {hwid: <first 6 chars>, ok}`.
+- Plans and the public `/api/network` block still come from the static catalog in the mock.
 
 ## Frontend
 
@@ -70,7 +80,7 @@ Pages (mobile 390px and desktop 1280px both required):
 - `/login`: three methods on one screen: Telegram widget (`@crs_vpn_bot`), email + password form, "войти по паскею" button. Link to `/register` and `/forgot`.
 - `/register` redirects to `/login`. The email block on `/login` is one form: email → `POST /api/auth/email/check` → password (existing account) or new password + repeat + consent (new account).
 - `/forgot`, `/reset?token=`, `/verify?token=`.
-- `/cabinet`: display-style screen from the mockup (days left, traffic bars, nodes), subscription link with copy, devices, payments. `demo` badge "пример" while data is mock. Empty state without telegram: explain and offer "привязать telegram" and "выбрать тариф".
+- `/cabinet`: one dark display block per subscription (main, "ru-вход" for obhod): plan, status, days left, valid until, device slots. Traffic: this month per subscription (obhod against its limit), 30-day daily chart (inline SVG, stacked), traffic by node. Subscription links: masked, "показать", copy, QR (client-side, `qrcode`), app hint. Devices with delete (in-page confirm, optimistic). Payments newest first with totals from `stats`. Node grid. States: `linked:false` → link telegram / choose plan; `data:null` → "в боте пока нет подписки"; `demo` → badge "пример"; `partial` → quiet note; 503 → "бот не отвечает".
 - `/cabinet/settings`: email and password, telegram link/unlink (widget), passkeys list + "добавить паскей", active sessions with revoke, "выйти везде".
 - Header on inner pages: compact nav with brand, "кабинет", "выйти".
 - Auth guard: `/cabinet*` server-side calls `/api/me`; 401 → redirect `/login?next=...`. `/login` with a valid session → redirect `/cabinet`.
@@ -79,7 +89,7 @@ Pages (mobile 390px and desktop 1280px both required):
 
 ## Config (env)
 
-`PUBLIC_ORIGIN`, `SESSION_COOKIE` (default `__Host-sid`), `TELEGRAM_LOGIN_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_NAME`, `SMTP_HOST/PORT/USER/PASSWORD/FROM` (optional).
+`PUBLIC_ORIGIN`, `SESSION_COOKIE` (default `__Host-sid`), `TELEGRAM_LOGIN_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_NAME`, `SMTP_HOST/PORT/USER/PASSWORD/FROM` (optional), `BOT_API_URL`, `BOT_API_TOKEN`, `REMNAWAVE_API_URL`, `REMNAWAVE_API_TOKEN`, `SUBSCRIPTION_BASE_URL` (default `https://sub.crs-projects.com`).
 
 ## Manual steps for the owner
 

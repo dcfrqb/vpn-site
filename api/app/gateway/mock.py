@@ -1,16 +1,21 @@
 import hashlib
 import random
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 from app.gateway.base import (
-    Cabinet,
+    BotCabinet,
+    CabinetDevice,
     CabinetNode,
-    Device,
+    CabinetPayment,
+    CabinetStats,
+    CabinetSubscription,
+    CabinetUser,
     NetworkStatus,
     Node,
-    Payment,
+    NodeTraffic,
     Plan,
-    Subscription,
+    SubTraffic,
+    TrafficDay,
 )
 
 # Prices mirror the bot catalog (src/app/core/plans.py, release 3.0, 23.09.2026).
@@ -53,8 +58,28 @@ _NODES = [
     Node(name="ru-1", country="ru", online=True),
 ]
 
-_DEVICES = ["iPhone", "MacBook", "Android", "Windows PC", "iPad", "Android TV"]
-_PING = {"nl": (38, 60), "fr": (45, 70), "us": (120, 160), "es": (60, 85), "ru": (8, 20)}
+# Nodes a cabinet shows. Placeholder names, not real node ids.
+_CAB_NODES = [
+    ("nl-1", "nl"),
+    ("nl-2", "nl"),
+    ("fr-1", "fr"),
+    ("fr-2", "fr"),
+    ("us-3", "us"),
+    ("es-1", "es"),
+    ("ru-1", "ru"),
+]
+_DEVICES = [
+    ("iOS", "19.0", "iPhone16,2", "Happ/3.1"),
+    ("iOS", "18.6", "iPhone14,5", "Karing/1.2"),
+    ("Android", "15", "Pixel 8", "Happ/2.9"),
+    ("Android", "14", "SM-S918B", "Clash Mi/1.0"),
+    ("macOS", "26.0", "MacBookAir10,1", "Happ/3.1"),
+    ("Windows", "11", "Desktop", "Karing/1.2"),
+    ("iPadOS", "19.0", "iPad13,18", "Happ/3.1"),
+]
+_MSK = timezone(timedelta(hours=3))
+_GB = 1024**3
+_OBHOD_LIMIT = 100 * _GB
 
 
 class MockGateway:
@@ -70,53 +95,167 @@ class MockGateway:
             nodes=nodes,
         )
 
-    async def cabinet(self, telegram_id: int) -> Cabinet:
+    async def delete_device(self, telegram_id: int, hwid: str) -> bool:
+        # Demo data is regenerated on every call, so a delete cannot stick; answer as the bot
+        # would for an own device and let the page update optimistically.
+        cab = await self.cabinet(telegram_id)
+        return any(d.hwid == hwid for d in cab.devices)
+
+    async def cabinet(self, telegram_id: int) -> BotCabinet:
         # Demo data seeded by the telegram id: stable for one user, different between users.
         rng = random.Random(telegram_id)  # noqa: S311 - not security related
         now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
-        plan = rng.choice(_PLANS)
-        days_left = rng.randint(3, 180)
-        payments = []
-        paid_at = now - timedelta(days=rng.randint(5, 25))
-        for _ in range(rng.randint(1, 4)):
-            months = rng.choice(list(plan.prices))
-            payments.append(
-                Payment(
-                    date=paid_at.date(),
-                    plan=plan.code,
-                    months=months,
-                    amount_rub=plan.prices[months],
-                    status="succeeded",
-                )
-            )
-            paid_at -= timedelta(days=30 * months)
-        countries = set(plan.countries) | ({"ru"} if plan.ru_entry_gb else set())
-        token = hashlib.sha256(f"demo:{telegram_id}".encode()).hexdigest()[:16]
-        return Cabinet(
-            linked=True,
-            subscription=Subscription(
-                plan=plan.code,
+        today = now.astimezone(_MSK).date()
+        plan = _PLANS[1] if rng.random() < 0.7 else _PLANS[0]  # standard, sometimes lite
+        has_obhod = rng.random() < 0.5
+        days_left = rng.randint(3, 120)
+        valid_until = (now + timedelta(days=days_left)).replace(hour=0)
+        token = hashlib.sha256(f"demo:{telegram_id}".encode()).hexdigest()
+
+        # 30 days of traffic, oldest first; obhod days are small and bursty.
+        daily = []
+        for i in range(29, -1, -1):
+            day = today - timedelta(days=i)
+            weekend = day.weekday() >= 5
+            main = int(rng.uniform(0.2, 4.5 if weekend else 3.0) * _GB)
+            if rng.random() < 0.1:
+                main = 0
+            obhod = int(rng.uniform(0.3, 5.0) * _GB) if has_obhod and rng.random() < 0.7 else 0
+            daily.append(TrafficDay(date=day, main_bytes=main, obhod_bytes=obhod))
+        month = [d for d in daily if d.date.month == today.month]
+        main_month = sum(d.main_bytes for d in month)
+        obhod_month = sum(d.obhod_bytes for d in month)
+        if has_obhod and rng.random() < 0.4:
+            obhod_month = int(rng.uniform(0.82, 0.97) * _OBHOD_LIMIT)  # near the cap
+
+        subs = [
+            CabinetSubscription(
+                kind="main",
+                plan_code=plan.code,
+                plan_title=plan.title.capitalize(),
                 status="active",
-                valid_until=now + timedelta(days=days_left),
+                valid_until=valid_until,
                 days_left=days_left,
                 device_limit=plan.device_limit,
-                sub_url=f"https://sub.example.com/demo-{token}",
-                traffic_month_gb=round(rng.uniform(3, 120), 1),
-            ),
-            devices=[
-                Device(name=name, last_seen_at=now - timedelta(minutes=rng.randint(1, 60 * 72)))
-                for name in rng.sample(_DEVICES, rng.randint(2, min(4, plan.device_limit)))
-            ],
-            payments=payments,
-            nodes=[
-                CabinetNode(
-                    name=n.name,
-                    country=n.country,
-                    online=n.online,
-                    ping_ms=rng.randint(*_PING[n.country]),
+                sub_url=f"https://sub.example.com/demo-{token[:16]}",
+                traffic=SubTraffic(
+                    used_bytes=main_month + int(rng.uniform(40, 400) * _GB),
+                    limit_bytes=None,
+                    reset="none",
+                    month_used_bytes=main_month,
+                ),
+                online_at=now - timedelta(minutes=rng.randint(1, 90)),
+                last_node=rng.choice(["nl-1", "nl-2", "fr-1"]),
+            )
+        ]
+        if has_obhod:
+            subs.append(
+                CabinetSubscription(
+                    kind="obhod",
+                    plan_code="pro",
+                    plan_title="RU-вход",
+                    status="active",
+                    valid_until=valid_until,
+                    days_left=days_left,
+                    device_limit=10,
+                    sub_url=f"https://sub.example.com/demo-{token[16:32]}",
+                    traffic=SubTraffic(
+                        used_bytes=obhod_month,
+                        limit_bytes=_OBHOD_LIMIT,
+                        reset="month",
+                        month_used_bytes=obhod_month,
+                    ),
+                    package=None,
+                    online_at=None,
+                    last_node=None,
                 )
-                for n in _NODES
-                if n.country in countries
+            )
+
+        devices = []
+        for n, (platform, os_version, model, app) in enumerate(
+            rng.sample(_DEVICES, rng.randint(2, 4))
+        ):
+            first = now - timedelta(days=rng.randint(20, 200))
+            devices.append(
+                CabinetDevice(
+                    subscription="obhod" if has_obhod and n == 1 else "main",
+                    hwid=hashlib.sha256(f"{token}:{n}".encode()).hexdigest()[:24],
+                    platform=platform,
+                    os_version=os_version,
+                    model=model,
+                    app=app,
+                    first_seen_at=first,
+                    last_seen_at=now - timedelta(minutes=rng.randint(1, 60 * 24 * 9)),
+                )
+            )
+
+        by_node: dict[str, int] = {}
+        for name, _ in _CAB_NODES[:-1]:
+            by_node[name] = int(sum(d.main_bytes for d in daily) * rng.uniform(0, 1))
+        total_main = sum(d.main_bytes for d in daily)
+        weight = sum(by_node.values()) or 1
+        traffic_by_node = [
+            NodeTraffic(node=name, country=c, bytes_30d=by_node[name] * total_main // weight)
+            for name, c in _CAB_NODES[:-1]
+            if by_node[name] > 0
+        ]
+        if has_obhod:
+            traffic_by_node.append(
+                NodeTraffic(node="ru-1", country="ru", bytes_30d=sum(d.obhod_bytes for d in daily))
+            )
+        traffic_by_node.sort(key=lambda t: t.bytes_30d, reverse=True)
+
+        payments = []
+        paid_at = now - timedelta(days=rng.randint(3, 25), hours=rng.randint(0, 12))
+        count = rng.randint(3, 6)
+        for n in range(count):
+            months = rng.choice([1, 1, 1, 3, 6])
+            status = "succeeded"
+            if n == 0 and rng.random() < 0.25:
+                status = "pending"
+            elif n > 0 and rng.random() < 0.15:
+                status = "canceled"
+            payments.append(
+                CabinetPayment(
+                    id=1000 + telegram_id % 900 * 7 + count - n,
+                    created_at=paid_at,
+                    paid_at=paid_at + timedelta(minutes=1) if status == "succeeded" else None,
+                    provider="yookassa",
+                    status=status,
+                    amount_rub=float(plan.prices[months]),
+                    plan_code=plan.code,
+                    period_months=months,
+                    kind="subscription",
+                    description=f"{plan.title.capitalize()}, {months} мес",
+                )
+            )
+            paid_at -= timedelta(days=30 * months, hours=rng.randint(0, 20))
+        ok = [p for p in payments if p.status == "succeeded" and p.kind != "promo"]
+        stats = CabinetStats(
+            payments_count=len(ok),
+            paid_total_rub=sum(p.amount_rub for p in ok),
+            first_payment_at=min((p.paid_at for p in ok if p.paid_at), default=None),
+            last_payment_at=max((p.paid_at for p in ok if p.paid_at), default=None),
+        )
+
+        return BotCabinet(
+            generated_at=now,
+            partial=False,
+            errors=[],
+            user=CabinetUser(
+                telegram_id=telegram_id,
+                username=None,
+                first_name=None,
+                customer_since=payments[-1].created_at,
+            ),
+            subscriptions=subs,
+            devices=devices,
+            traffic_daily=daily,
+            traffic_by_node=traffic_by_node,
+            payments=payments,
+            stats=stats,
+            nodes=[
+                CabinetNode(name=name, country=c, online=rng.random() > 0.08)
+                for name, c in _CAB_NODES
             ],
-            demo=True,
         )

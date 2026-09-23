@@ -60,3 +60,25 @@ export function shortAgent(ua: string | null | undefined): string {
   const s = [br, os].filter(Boolean).join(" · ");
   return s || ua.slice(0, 40).toLowerCase();
 }
+
+export const GB = 1024 ** 3;
+
+// Bytes → "12.3" (binary gigabytes, as the bot and the panel count them).
+export function gb(bytes: number | null | undefined, digits = 1): string {
+  if (bytes == null) return "—";
+  const v = bytes / GB;
+  if (v >= 1000) return Math.round(v).toLocaleString("ru-RU");
+  return v.toFixed(v >= 100 ? 0 : digits);
+}
+
+// Last seen with minute precision: "только что", "12 мин назад", "3 ч назад", "вчера", ...
+export function agoFine(iso: string | null | undefined, now = Date.now()): string {
+  if (!iso) return "не заходило";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "—";
+  const min = Math.floor((now - t) / 60000);
+  if (min < 2) return "только что";
+  if (min < 60) return `${min} мин назад`;
+  if (min < 60 * 12) return `${Math.floor(min / 60)} ч назад`;
+  return ago(iso);
+}

@@ -30,6 +30,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-vpn_site}:${POSTGRES_PASSWORD}@vpn-site-db:5432/${POSTGRES_DB:-vpn_site}
       BOT_API_URL: ${BOT_API_URL:-}
       BOT_API_TOKEN: ${BOT_API_TOKEN:-}
+      REMNAWAVE_API_URL: ${REMNAWAVE_API_URL:-}
+      REMNAWAVE_API_TOKEN: ${REMNAWAVE_API_TOKEN:-}
+      SUBSCRIPTION_BASE_URL: ${SUBSCRIPTION_BASE_URL:-https://sub.crs-projects.com}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://vpn.crs-projects.com}
       SESSION_COOKIE: ${SESSION_COOKIE:-__Host-sid}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}

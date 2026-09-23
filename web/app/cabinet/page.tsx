@@ -7,11 +7,11 @@ import { getCabinet, requireAccount } from "@/lib/session";
 export const metadata = { title: "кабинет · crs·vpn" };
 export const dynamic = "force-dynamic";
 
-function Down() {
+function Down({ bot }: { bot: boolean }) {
   return (
     <div className="panel empty">
-      <h4>кабинет сейчас не отвечает</h4>
-      <p className="note">сервер недоступен. обнови страницу через минуту.</p>
+      <h4>{bot ? "бот не отвечает" : "кабинет сейчас не отвечает"}</h4>
+      <p className="note">{bot ? "данные подписки живут в боте, а он сейчас молчит. обнови страницу через минуту." : "сервер недоступен. обнови страницу через минуту."}</p>
     </div>
   );
 }
@@ -19,8 +19,9 @@ function Down() {
 export default async function CabinetPage() {
   const account = await requireAccount("/cabinet");
   const cab = account ? await getCabinet() : null;
-  const data = cab?.state === "ok" ? cab.data : null;
-  const demo = !!data?.demo && data.linked;
+  const res = cab?.state === "ok" ? cab.data : null;
+  const botDown = cab?.state === "down" && cab.status === 503;
+  const demo = !!res?.demo && res.linked;
   const who = account?.telegram?.username ? `@${account.telegram.username}` : account?.telegram?.first_name || account?.email || "";
 
   return (
@@ -33,13 +34,19 @@ export default async function CabinetPage() {
           </h2>
           <p>
             {who && <span className="mono who">{who}</span>}
-            {demo && <> данные ненастоящие: кабинет пока показывает пример, реальная подписка из бота появится позже.</>}
+            {demo && <> данные ненастоящие: сайт пока не подключен к боту и показывает пример.</>}
           </p>
         </div>
 
-        {!account || !data ? (
-          <Down />
-        ) : !data.linked ? (
+        {res?.data?.partial && (
+          <p className="cb-partial">
+            {res.data.errors.includes("panel") ? "часть данных временно недоступна, показываем что есть." : "подписка и трафик из панели. оплаты и ru-вход появятся после обновления бота."}
+          </p>
+        )}
+
+        {!account || !res ? (
+          <Down bot={botDown} />
+        ) : !res.linked ? (
           <div className="empty-grid">
             <div className="panel empty">
               <div className="caps step">01</div>
@@ -56,8 +63,19 @@ export default async function CabinetPage() {
               </a>
             </div>
           </div>
+        ) : !res.data ? (
+          <div className="empty-grid">
+            <div className="panel empty">
+              <div className="caps step">00</div>
+              <h4>в боте пока нет подписки</h4>
+              <p className="note">telegram привязан, но в @{TG_BOT} на него еще ничего не оформлено. выбери тариф, и подписка появится здесь.</p>
+              <a className="btn solid" href="/#plans">
+                выбрать тариф
+              </a>
+            </div>
+          </div>
         ) : (
-          <CabinetView data={data} />
+          <CabinetView data={res.data} />
         )}
       </main>
     </>

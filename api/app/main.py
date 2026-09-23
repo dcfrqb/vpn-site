@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import db, errors
+from app.gateway import close_gateway
 from app.routers import auth, cabinet, health, me, public, tg_app, tg_bot_bridge
 from app.security import OriginCheckMiddleware
 
@@ -16,6 +17,7 @@ async def lifespan(_: FastAPI):
     try:
         yield
     finally:
+        await close_gateway()
         await db.close_pool()
 
 
