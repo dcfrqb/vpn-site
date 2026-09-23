@@ -30,6 +30,17 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-vpn_site}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-vpn_site}
       BOT_API_URL: ${BOT_API_URL:-}
       BOT_API_TOKEN: ${BOT_API_TOKEN:-}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://vpn.crs-projects.com}
+      SESSION_COOKIE: ${SESSION_COOKIE:-__Host-sid}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_LOGIN_BOT_TOKEN: ${TELEGRAM_LOGIN_BOT_TOKEN:-}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-vpn.crs-projects.com}
+      WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:-CRS VPN}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     depends_on:
       db:
         condition: service_healthy

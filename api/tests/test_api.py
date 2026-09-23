@@ -1,11 +1,13 @@
 from fastapi.testclient import TestClient
 
+from app.config import get_settings
 from app.main import app
 
 client = TestClient(app)
 
 
-def test_health_without_db():
+def test_health_without_db(monkeypatch):
+    monkeypatch.setattr(get_settings(), "database_url", "")
     r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json()["ok"] is True

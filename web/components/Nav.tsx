@@ -43,7 +43,7 @@ export default function Nav({ nodes, countries }: Props) {
           </span>
         </span>
       </a>
-      <a className="navitem" href="#cabinet">
+      <a className="navitem" href="/cabinet">
         <svg viewBox="0 0 34 34" aria-hidden="true">
           <rect x="3" y="5" width="28" height="18" rx="2" fill="#0f0e12" />
           <rect x="7" y="9" width="10" height="2" fill="#f05a24" />
@@ -61,7 +61,7 @@ export default function Nav({ nodes, countries }: Props) {
           </span>
         </span>
       </a>
-      <a className="navitem" href="#login">
+      <a className="navitem" href="/login">
         <svg viewBox="0 0 34 34" aria-hidden="true">
           <circle cx="12" cy="17" r="8" fill="none" stroke="#0f0e12" strokeWidth="1.5" />
           <circle cx="12" cy="17" r="3" fill="#0f0e12" />

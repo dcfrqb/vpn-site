@@ -5,6 +5,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY app ./app
+COPY migrations ./migrations
 ARG GIT_SHA=dev
 ENV GIT_SHA=$GIT_SHA PATH="/app/.venv/bin:$PATH"
 RUN useradd --system --uid 10001 app

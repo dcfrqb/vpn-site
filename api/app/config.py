@@ -12,6 +12,25 @@ class Settings(BaseSettings):
     bot_api_url: str = ""
     bot_api_token: str = ""
 
+    # auth
+    public_origin: str = "https://vpn.crs-projects.com"
+    session_cookie: str = "__Host-sid"
+    telegram_login_bot_token: str = ""
+    telegram_bot_username: str = ""
+    webauthn_rp_id: str = "vpn.crs-projects.com"
+    webauthn_rp_name: str = "CRS VPN"
+
+    # mail; empty host = letters stay in web.outbox
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+
+    @property
+    def cookie_secure(self) -> bool:
+        return self.public_origin.startswith("https://")
+
 
 @lru_cache
 def get_settings() -> Settings:

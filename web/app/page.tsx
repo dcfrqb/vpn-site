@@ -36,7 +36,7 @@ export default async function Home() {
               <a className="btn solid" href="#plans">
                 выбрать тариф {minPrice && <span className="k">от {minPrice} ₽</span>}
               </a>
-              <a className="btn" href="#login">
+              <a className="btn" href="/login">
                 войти
               </a>
             </div>
@@ -133,9 +133,9 @@ export default async function Home() {
               </svg>
               <h3>telegram</h3>
               <p>подтверждение в самом telegram, пароль не нужен. аккаунт сразу связан с ботом.</p>
-              <button className="btn solid" type="button" disabled>
-                скоро
-              </button>
+              <a className="btn solid" href="/login">
+                войти через telegram
+              </a>
             </div>
             <div className="lg">
               <svg viewBox="0 0 40 40" aria-hidden="true">
@@ -144,9 +144,9 @@ export default async function Home() {
               </svg>
               <h3>email и пароль</h3>
               <p>для тех, у кого нет telegram. telegram можно привязать позже, в настройках.</p>
-              <button className="btn" type="button" disabled>
-                скоро
-              </button>
+              <a className="btn" href="/login">
+                войти по email
+              </a>
             </div>
             <div className="lg">
               <svg viewBox="0 0 40 40" aria-hidden="true">
@@ -157,9 +157,9 @@ export default async function Home() {
               </svg>
               <h3>паскей</h3>
               <p>face id или отпечаток пальца. добавляется в кабинете после первого входа.</p>
-              <button className="btn" type="button" disabled>
-                скоро
-              </button>
+              <a className="btn" href="/login">
+                войти по паскею
+              </a>
             </div>
           </div>
         </div>
