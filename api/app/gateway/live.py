@@ -212,20 +212,25 @@ class LiveGateway:
             errors=sorted(errors),
             user=profile.user,
             subscriptions=subs,
-            devices=[
-                CabinetDevice(
-                    subscription=k,
-                    hwid=d.hwid,
-                    platform=d.platform,
-                    os_version=d.osVersion,
-                    model=d.deviceModel,
-                    app=_app(d.userAgent),
-                    first_seen_at=d.createdAt,
-                    last_seen_at=d.updatedAt,
-                )
-                for k in kinds
-                for d in devices[k]
-            ],
+            # most recently used first
+            devices=sorted(
+                (
+                    CabinetDevice(
+                        subscription=k,
+                        hwid=d.hwid,
+                        platform=d.platform,
+                        os_version=d.osVersion,
+                        model=d.deviceModel,
+                        app=_app(d.userAgent),
+                        first_seen_at=d.createdAt,
+                        last_seen_at=d.updatedAt,
+                    )
+                    for k in kinds
+                    for d in devices[k]
+                ),
+                key=lambda d: d.last_seen_at or datetime.min.replace(tzinfo=UTC),
+                reverse=True,
+            ),
             traffic_daily=traffic_daily,
             traffic_by_node=self._by_node([usage[k] for k in kinds], set(days)),
             traffic_monthly=monthly(long_usage, today),
