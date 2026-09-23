@@ -1,0 +1,29 @@
+[project]
+name = "vpn-site-api"
+version = "0.1.0"
+description = "Backend of the CRS VPN website"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic-settings>=2.6",
+  "asyncpg>=0.30",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "httpx>=0.28",
+  "ruff>=0.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,70 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest -q
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [web, api]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Trigger deploy on the server
+        env:
+          SECRET: ${{ secrets.DEPLOY_HOOK_SECRET }}
+          SHA: ${{ github.sha }}
+        run: |
+          body=$(printf '{"sha":"%s","ts":%s}' "$SHA" "$(date +%s)")
+          sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$SECRET" -hex | awk '{print $NF}')
+          code=$(curl -sS -o out.txt -w '%{http_code}' --max-time 1500 \
+            -X POST https://vpn.crs-projects.com/_deploy \
+            -H 'Content-Type: application/json' -H "X-Signature: $sig" --data "$body")
+          cat out.txt
+          test "$code" = 200
+      - name: Check the live version
+        env:
+          SHA: ${{ github.sha }}
+        run: curl -fsS https://vpn.crs-projects.com/healthz | tee /dev/stderr | grep -q "\"version\":\"$SHA\""
