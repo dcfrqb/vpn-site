@@ -1,12 +1,14 @@
 import Devices from "@/components/cabinet/Devices";
 import SubLinks from "@/components/cabinet/SubLinks";
-import TrafficChart from "@/components/cabinet/TrafficChart";
+import TrafficPanel from "@/components/cabinet/TrafficPanel";
 import { date, gb, GB, monthName, plural, rub } from "@/lib/format";
 import type { BotCabinet, CabinetPayment, CabinetSubscription } from "@/lib/types";
 
 const BARS = 32;
 const BARS_M = 20; // phones get a shorter meter so the last lit bar is never cut off
 const NEAR_LIMIT = 0.85;
+const SOON_DAYS = 7;
+const ENDED = new Set(["expired", "disabled"]);
 
 export const kindLabel = (kind: string) => (kind === "obhod" ? "ru-вход" : "основная");
 
@@ -98,6 +100,14 @@ function Screen({ sub, used }: { sub: CabinetSubscription; used: number }) {
             <div className="days">
               <span className="big word">бессрочно</span>
             </div>
+          ) : ENDED.has(sub.status) ? (
+            <div className="days dim">
+              <span className="big word ended">
+                подписка
+                <br />
+                закончилась
+              </span>
+            </div>
           ) : (
             <div className={`days${active ? "" : " dim"}`}>
               <span className="big">{String(days).padStart(2, "0")}</span>
@@ -108,9 +118,14 @@ function Screen({ sub, used }: { sub: CabinetSubscription; used: number }) {
               </span>
             </div>
           )}
+          {active && !sub.is_lifetime && days <= SOON_DAYS && (
+            <p className="scr-warn">
+              осталось {days} {plural(days, "день", "дня", "дней")}
+            </p>
+          )}
           {sub.status !== "unknown" && (
             <div className="scr-kv">
-              <span>действует до</span>
+              <span>{ENDED.has(sub.status) ? "закончилась" : "действует до"}</span>
               <b>{sub.is_lifetime ? "без срока" : date(sub.valid_until)}</b>
             </div>
           )}
@@ -137,11 +152,6 @@ function Screen({ sub, used }: { sub: CabinetSubscription; used: number }) {
                 ))}
               </div>
             </div>
-          )}
-          {!active && sub.status !== "unknown" && (
-            <a className="btn scr-btn" href="/#plans">
-              продлить
-            </a>
           )}
         </div>
       </div>
@@ -227,23 +237,69 @@ function Nodes({ data }: { data: BotCabinet }) {
   );
 }
 
-function TrafficNodes({ data }: { data: BotCabinet }) {
-  const rows = data.traffic_by_node.filter((r) => r.bytes_30d > 0);
-  if (rows.length === 0) return null;
-  const max = Math.max(...rows.map((r) => r.bytes_30d));
+// Actions under the display, by the state of the main subscription.
+// payments: /cabinet/pay (not built yet, so the pay buttons lead to the plans for now)
+const PAY_URL = "/#plans";
+
+function Actions({ sub }: { sub: CabinetSubscription | null }) {
+  if (sub && sub.status === "unknown") return null;
+  let body;
+  if (!sub) {
+    body = (
+      <a className="btn accent" href={PAY_URL}>
+        выбрать тариф
+      </a>
+    );
+  } else if (sub.is_lifetime && !ENDED.has(sub.status)) {
+    body = (
+      <>
+        <a className="btn accent" href="#links">
+          подключить устройство
+        </a>
+        <button type="button" className="btn" disabled aria-disabled="true">
+          пригласить друга <span className="chip">скоро</span>
+        </button>
+      </>
+    );
+  } else if (ENDED.has(sub.status)) {
+    body = (
+      <a className="btn accent" href={PAY_URL}>
+        продлить
+      </a>
+    );
+  } else {
+    body = (
+      <>
+        <a className="btn accent" href={PAY_URL}>
+          продлить
+        </a>
+        <a className="btn" href={PAY_URL}>
+          сменить тариф
+        </a>
+      </>
+    );
+  }
+  return <div className="cb-actions cb-area-actions">{body}</div>;
+}
+
+function NoSub() {
   return (
-    <div className="cb-by-node">
-      <div className="caps">по нодам, 30 дней</div>
-      {rows.map((r) => (
-        <div key={r.node} className="row">
-          <span className="mono">{r.node}</span>
-          <span className="track" aria-hidden="true">
-            <i style={{ width: `${Math.max(2, (r.bytes_30d / max) * 100)}%` }} />
-          </span>
-          <b className="mono">{gb(r.bytes_30d)} гб</b>
-        </div>
-      ))}
-    </div>
+    <section className="screen cb-screen cb-area-screens" aria-label="Подписки нет">
+      <div className="scr-top">
+        <span>
+          <i className="lamp" aria-hidden="true" />
+          подписка · нет
+        </span>
+        <span />
+      </div>
+      <div className="days dim">
+        <span className="big word">нет подписки</span>
+      </div>
+      <div className="scr-kv">
+        <span>статус</span>
+        <b>не оформлена</b>
+      </div>
+    </section>
   );
 }
 
@@ -251,19 +307,12 @@ export default function CabinetView({ data }: { data: BotCabinet }) {
   const subs = [...data.subscriptions].sort((a, b) => (a.kind === "main" ? -1 : b.kind === "main" ? 1 : 0));
   const hasObhod = subs.some((s) => s.kind === "obhod");
   const devicesOf = (kind: string) => data.devices.filter((d) => d.subscription === kind).length;
-  const hasLinks = subs.some((s) => s.sub_url);
-  const noTraffic = data.traffic_daily.every((d) => d.main_bytes + d.obhod_bytes === 0);
+  const links = subs.filter((s) => s.sub_url);
 
   return (
-    <div className={`cb${hasLinks ? "" : " no-links"}`}>
+    <div className={`cb${links.length ? "" : " no-links"}`}>
       {subs.length === 0 ? (
-        <div className="panel empty cb-area-screens">
-          <h4>активной подписки нет</h4>
-          <p className="note">в боте нет ни основной подписки, ни ru-входа. оплаты и устройства ниже, если они были.</p>
-          <a className="btn solid" href="/#plans">
-            выбрать тариф
-          </a>
-        </div>
+        <NoSub />
       ) : (
         <div className={`cb-screens cb-area-screens n${subs.length}`}>
           {subs.map((s) => (
@@ -272,29 +321,20 @@ export default function CabinetView({ data }: { data: BotCabinet }) {
         </div>
       )}
 
-      {hasLinks && (
-        <div className="panel cb-area-links">
+      <Actions sub={subs[0] ?? null} />
+
+      {links.length > 0 && (
+        <div className="panel cb-area-links" id="links">
           <h4>ссылки подписки</h4>
-          <SubLinks subs={subs.filter((s) => s.sub_url).map((s) => ({ kind: s.kind, label: kindLabel(s.kind), url: s.sub_url as string, limitGb: s.traffic?.limit_bytes ? Math.round(s.traffic.limit_bytes / GB) : null }))} />
+          <SubLinks subs={links.map((s) => ({ kind: s.kind, label: kindLabel(s.kind), url: s.sub_url as string, limitGb: s.traffic?.limit_bytes ? Math.round(s.traffic.limit_bytes / GB) : null }))} />
         </div>
       )}
 
-      <div className="panel cb-area-traffic">
-        <h4>
-          трафик{" "}
-          {!(noTraffic && data.partial) && (
-            <span className="mono count">
-              30 {plural(30, "день", "дня", "дней")} · {gb(data.traffic_daily.reduce((a, d) => a + d.main_bytes + d.obhod_bytes, 0))} гб
-            </span>
-          )}
-        </h4>
-        {data.traffic_daily.length === 0 || (noTraffic && data.partial) ? (
-          <p className="note">статистика трафика сейчас недоступна.</p>
-        ) : (
-          <TrafficChart days={data.traffic_daily} obhod={hasObhod} />
-        )}
-        <TrafficNodes data={data} />
-      </div>
+      {(subs.length > 0 || data.traffic_daily.some((d) => d.main_bytes + d.obhod_bytes > 0)) && (
+        <div className="panel cb-area-traffic">
+          <TrafficPanel data={data} obhod={hasObhod} />
+        </div>
+      )}
 
       <div className="panel cb-area-devices">
         <Devices devices={data.devices} labels={hasObhod} unavailable={data.partial && data.devices.length === 0} />

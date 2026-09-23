@@ -46,6 +46,7 @@ class SubTraffic(_Tolerant):
     limit_bytes: int | None = None
     reset: str = "none"
     month_used_bytes: int | None = None
+    lifetime_used_bytes: int | None = None  # panel userTraffic.lifetimeUsedTrafficBytes
 
 
 class ObhodPackage(_Tolerant):
@@ -84,6 +85,12 @@ class CabinetDevice(_Tolerant):
 
 class TrafficDay(_Tolerant):
     date: dt.date
+    main_bytes: int = 0
+    obhod_bytes: int = 0
+
+
+class TrafficMonth(_Tolerant):
+    month: str  # YYYY-MM, Moscow calendar as the panel returns dates
     main_bytes: int = 0
     obhod_bytes: int = 0
 
@@ -160,6 +167,7 @@ class BotCabinet(_Tolerant):
     devices: list[CabinetDevice] = []
     traffic_daily: list[TrafficDay] = []
     traffic_by_node: list[NodeTraffic] = []
+    traffic_monthly: list[TrafficMonth] = []
     payments: list[CabinetPayment] = []
     stats: CabinetStats = CabinetStats()
     nodes: list[CabinetNode] = []

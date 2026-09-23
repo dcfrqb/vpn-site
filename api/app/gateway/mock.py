@@ -16,6 +16,7 @@ from app.gateway.base import (
     Plan,
     SubTraffic,
     TrafficDay,
+    TrafficMonth,
 )
 
 # Prices mirror the bot catalog (src/app/core/plans.py, release 3.0, 23.09.2026).
@@ -81,6 +82,9 @@ _MSK = timezone(timedelta(hours=3))
 _GB = 1024**3
 _OBHOD_LIMIT = 100 * _GB
 
+# Owner preview (GET /api/cabinet?demo=...): fixed states of a paid subscription.
+SCENARIOS = ("active", "expiring", "expired", "none")
+
 
 class MockGateway:
     async def list_plans(self) -> list[Plan]:
@@ -101,15 +105,24 @@ class MockGateway:
         cab = await self.cabinet(telegram_id)
         return any(d.hwid == hwid for d in cab.devices)
 
-    async def cabinet(self, telegram_id: int) -> BotCabinet:
+    async def cabinet(self, telegram_id: int, scenario: str | None = None) -> BotCabinet:
         # Demo data seeded by the telegram id: stable for one user, different between users.
+        # `scenario` (one of SCENARIOS) pins the subscription state for the owner preview.
         rng = random.Random(telegram_id)  # noqa: S311 - not security related
         now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
         today = now.astimezone(_MSK).date()
         plan = _PLANS[1] if rng.random() < 0.7 else _PLANS[0]  # standard, sometimes lite
         has_obhod = rng.random() < 0.5
         days_left = rng.randint(3, 120)
+        status = "active"
+        if scenario is not None:
+            plan = _PLANS[1]
+            has_obhod = scenario in ("active", "expiring")
+            days_left = {"active": 35, "expiring": 3}.get(scenario, 0)
+            status = "expired" if scenario in ("expired", "none") else "active"
         valid_until = (now + timedelta(days=days_left)).replace(hour=0)
+        if status == "expired":
+            valid_until = (now - timedelta(days=12)).replace(hour=0)
         token = hashlib.sha256(f"demo:{telegram_id}".encode()).hexdigest()
 
         # 30 days of traffic, oldest first; obhod days are small and bursty.
@@ -133,7 +146,7 @@ class MockGateway:
                 kind="main",
                 plan_code=plan.code,
                 plan_title=plan.title.capitalize(),
-                status="active",
+                status=status,
                 valid_until=valid_until,
                 days_left=days_left,
                 device_limit=plan.device_limit,
@@ -143,6 +156,7 @@ class MockGateway:
                     limit_bytes=None,
                     reset="none",
                     month_used_bytes=main_month,
+                    lifetime_used_bytes=main_month + int(rng.uniform(300, 1500) * _GB),
                 ),
                 online_at=now - timedelta(minutes=rng.randint(1, 90)),
                 last_node=rng.choice(["nl-1", "nl-2", "fr-1"]),
@@ -164,6 +178,7 @@ class MockGateway:
                         limit_bytes=_OBHOD_LIMIT,
                         reset="month",
                         month_used_bytes=obhod_month,
+                        lifetime_used_bytes=obhod_month + int(rng.uniform(50, 300) * _GB),
                     ),
                     package=None,
                     online_at=None,
@@ -188,6 +203,21 @@ class MockGateway:
                     last_seen_at=now - timedelta(minutes=rng.randint(1, 60 * 24 * 9)),
                 )
             )
+
+        # Monthly bars since the first paid month: the current month from the daily data.
+        history = rng.randint(6, 16)
+        traffic_monthly = []
+        for back in range(history - 1, -1, -1):
+            idx = today.year * 12 + today.month - 1 - back
+            key = f"{idx // 12:04d}-{idx % 12 + 1:02d}"
+            if back == 0:
+                traffic_monthly.append(
+                    TrafficMonth(month=key, main_bytes=main_month, obhod_bytes=obhod_month)
+                )
+                continue
+            main_m = int(rng.uniform(15, 90) * _GB)
+            obhod_m = int(rng.uniform(5, 80) * _GB) if has_obhod and back < history // 2 else 0
+            traffic_monthly.append(TrafficMonth(month=key, main_bytes=main_m, obhod_bytes=obhod_m))
 
         by_node: dict[str, int] = {}
         for name, _ in _CAB_NODES[:-1]:
@@ -238,6 +268,15 @@ class MockGateway:
             last_payment_at=max((p.paid_at for p in ok if p.paid_at), default=None),
         )
 
+        if scenario == "none":
+            subs, devices, traffic_by_node, traffic_monthly, payments = [], [], [], [], []
+            stats = CabinetStats()
+            daily = [TrafficDay(date=d.date) for d in daily]
+        elif scenario == "expired":
+            # no traffic since it ran out
+            cutoff = today - timedelta(days=11)
+            daily = [d if d.date < cutoff else TrafficDay(date=d.date) for d in daily]
+
         return BotCabinet(
             generated_at=now,
             partial=False,
@@ -246,12 +285,13 @@ class MockGateway:
                 telegram_id=telegram_id,
                 username=None,
                 first_name=None,
-                customer_since=payments[-1].created_at,
+                customer_since=payments[-1].created_at if payments else None,
             ),
             subscriptions=subs,
             devices=devices,
             traffic_daily=daily,
             traffic_by_node=traffic_by_node,
+            traffic_monthly=traffic_monthly,
             payments=payments,
             stats=stats,
             nodes=[

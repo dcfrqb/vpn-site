@@ -5,12 +5,10 @@ import { useEffect, useRef, useState } from "react";
 
 type Item = { kind: string; label: string; url: string; limitGb: number | null };
 
-// "https://sub.example.com/abcdef123" → "sub.example.com/abcd••••••••"
+// "https://sub.example.com/abcdef123" → "sub.example.com/••••••••": the token never shows masked.
 function mask(url: string) {
   try {
-    const u = new URL(url);
-    const tail = (u.pathname + u.search).replace(/^\//, "");
-    return `${u.host}/${tail.slice(0, 4)}${"•".repeat(10)}`;
+    return `${new URL(url).host}/${"•".repeat(8)}`;
   } catch {
     return "•".repeat(24);
   }
@@ -71,20 +69,20 @@ function Link({ item }: { item: Item }) {
         <span className="caps">{item.label}</span>
         {item.kind === "obhod" && <span className="note">{item.limitGb ? `отдельная подписка, ${item.limitGb} гб в месяц` : "отдельная подписка"}</span>}
       </div>
-      <div className="link-box">
-        <code ref={ref} className={shown ? undefined : "masked"}>
-          {shown ? item.url : mask(item.url)}
-        </code>
+      <div className="cb-link-ctl">
         <button type="button" className="ghost" onClick={() => setShown((v) => !v)} aria-pressed={shown}>
           {shown ? "скрыть" : "показать"}
         </button>
-        <button type="button" onClick={copy}>
+        <button type="button" className="solid" onClick={copy}>
           копировать
         </button>
+        <button type="button" className="ghost" onClick={() => setQr((v) => !v)} aria-pressed={qr}>
+          qr-код
+        </button>
       </div>
-      <button type="button" className="linkish cb-qr-t" onClick={() => setQr((v) => !v)} aria-expanded={qr}>
-        {qr ? "спрятать qr" : "показать qr-код"}
-      </button>
+      <code ref={ref} className={`cb-link-url${shown ? "" : " masked"}`}>
+        {shown ? item.url : mask(item.url)}
+      </code>
       {qr && <Qr url={item.url} label={item.label} />}
       {toast && (
         <div className="toast" role="status">

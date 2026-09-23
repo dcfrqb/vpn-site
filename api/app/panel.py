@@ -9,6 +9,7 @@ Allowlist, nothing else is called:
 - GET  /api/hwid/devices/{id}                HWID devices of a user
 - POST /api/hwid/devices/delete {userId,hwid} the only write
 - GET  /api/bandwidth-stats/users/{id}       daily usage by date range, per node series
+                                             (30 days: 30 s cache; up to 24 months: 10 min cache)
 - GET  /api/nodes                            nodes: only name, country and status leave this module
 
 Never log response bodies (they hold subscription links) or the token.
@@ -28,6 +29,7 @@ log = logging.getLogger(__name__)
 
 TIMEOUT = 4.0
 CACHE_TTL = 30.0
+LONG_TTL = 600.0  # the long bandwidth range (monthly bars) is heavier and changes slowly
 
 
 class PanelUnavailable(Exception):  # noqa: N818 - reads better at the call site
@@ -40,6 +42,7 @@ class _Tolerant(BaseModel):
 
 class PanelTraffic(_Tolerant):
     usedTrafficBytes: int = 0  # noqa: N815 - panel field names
+    lifetimeUsedTrafficBytes: int | None = None  # noqa: N815
     onlineAt: datetime | None = None  # noqa: N815
     lastConnectedNodeUuid: str | None = None  # noqa: N815
 
@@ -100,6 +103,7 @@ class PanelClient:
         *,
         transport: httpx.AsyncBaseTransport | None = None,
         cache_ttl: float = CACHE_TTL,
+        long_ttl: float = LONG_TTL,
     ):
         # REMNAWAVE_API_URL may be "https://host" or "https://host/api"; paths below carry /api.
         self._base = base_url.rstrip("/")
@@ -109,6 +113,7 @@ class PanelClient:
         self._transport = transport
         self._client: httpx.AsyncClient | None = None
         self._ttl = cache_ttl
+        self._long_ttl = long_ttl
         self._cache: dict[tuple, tuple[float, Any]] = {}
 
     def _http(self) -> httpx.AsyncClient:
@@ -144,7 +149,7 @@ class PanelClient:
         except (ValueError, KeyError, TypeError) as e:
             raise PanelUnavailable from e
 
-    async def _cached(self, key: tuple, load):
+    async def _cached(self, key: tuple, load, ttl: float | None = None):
         hit = self._cache.get(key)
         now = time.monotonic()
         if hit and hit[0] > now:
@@ -152,11 +157,12 @@ class PanelClient:
         value = await load()
         if len(self._cache) > 5000:
             self._cache = {k: v for k, v in self._cache.items() if v[0] > now}
-        self._cache[key] = (now + self._ttl, value)
+        self._cache[key] = (now + (self._ttl if ttl is None else ttl), value)
         return value
 
     def drop(self, user_id: int) -> None:
-        for k in [k for k in self._cache if len(k) > 1 and k[1] == user_id]:
+        # The long usage range survives a device delete: it does not depend on devices.
+        for k in [k for k in self._cache if len(k) > 1 and k[1] == user_id and k[0] != "usage_m"]:
             self._cache.pop(k, None)
 
     # ---------- allowlisted calls ----------
@@ -208,7 +214,11 @@ class PanelClient:
             raise PanelUnavailable
         return True
 
-    async def usage(self, user_id: int, start: date, end: date) -> PanelUsage:
+    async def usage(
+        self, user_id: int, start: date, end: date, *, long: bool = False
+    ) -> PanelUsage:
+        """Daily usage. `long=True`: the monthly range, same route, cached for LONG_TTL."""
+
         async def load():
             res = await self._call(
                 "GET",
@@ -219,6 +229,8 @@ class PanelClient:
                 return PanelUsage()
             return self._parse(PanelUsage, self._body(res))
 
+        if long:
+            return await self._cached(("usage_m", user_id, start, end), load, self._long_ttl)
         return await self._cached(("usage", user_id, start, end), load)
 
     async def nodes(self) -> list[PanelNode]:

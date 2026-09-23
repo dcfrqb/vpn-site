@@ -5,8 +5,10 @@ payments, stats. Panel (PanelClient): status, expiry, link, traffic, devices, us
 The result has the same shape as the mock (BotCabinet), so routers and the web do not care.
 """
 
+import asyncio
 import logging
 import math
+import re
 from datetime import UTC, date, datetime, timedelta, timezone
 from urllib.parse import urlsplit, urlunsplit
 
@@ -22,6 +24,7 @@ from app.gateway.base import (
     Plan,
     SubTraffic,
     TrafficDay,
+    TrafficMonth,
 )
 from app.gateway.http import HttpBotClient
 from app.gateway.mock import MockGateway
@@ -32,6 +35,8 @@ log = logging.getLogger(__name__)
 
 MSK = timezone(timedelta(hours=3))
 DAYS = 30
+MONTHS = 24  # monthly bars go back at most this many months, the current one included
+MONTHLY_WAIT = 2.0  # seconds the cabinet waits for the long range; it keeps loading after that
 LIFETIME_YEAR = 2099
 _RESET = {"MONTH": "month", "MONTH_ROLLING": "month", "DAY": "day", "WEEK": "week"}
 
@@ -47,6 +52,52 @@ def rewrite_sub_url(url: str, base: str) -> str:
     return urlunsplit((b.scheme, b.netloc, prefix + u.path, u.query, ""))
 
 
+_NODE_PREFIX = re.compile(r"^remnanode-", re.IGNORECASE)
+
+
+def node_label(name: str) -> str:
+    """Panel node names look like "remnanode-nl-2"; people see "nl-2"."""
+    return _NODE_PREFIX.sub("", name.strip()) or name
+
+
+def month_start(today: date, back: int) -> date:
+    """First day of the month `back` months before today's month."""
+    idx = today.year * 12 + today.month - 1 - back
+    return date(idx // 12, idx % 12 + 1, 1)
+
+
+def monthly(usages: dict[str, PanelUsage], today: date) -> list[TrafficMonth]:
+    """Daily panel totals grouped by YYYY-MM, from the first month with traffic to the current
+    month (gaps filled with zeros), at most MONTHS months."""
+    sums: dict[str, dict[str, int]] = {}
+    for kind, u in usages.items():
+        if kind not in ("main", "obhod"):
+            continue
+        for cat, value in zip(u.categories, u.sparklineData, strict=False):
+            key = cat[:7]
+            if len(key) != 7 or not value:
+                continue
+            row = sums.setdefault(key, {"main": 0, "obhod": 0})
+            row[kind] += int(value)
+    if not sums:
+        return []
+    oldest = month_start(today, MONTHS - 1)
+    first = max(min(sums), f"{oldest.year:04d}-{oldest.month:02d}")
+    out = []
+    d = oldest
+    while d <= today:
+        key = f"{d.year:04d}-{d.month:02d}"
+        if key >= first:
+            row = sums.get(key, {})
+            out.append(
+                TrafficMonth(
+                    month=key, main_bytes=row.get("main", 0), obhod_bytes=row.get("obhod", 0)
+                )
+            )
+        d = month_start(d, -1)
+    return out
+
+
 def _app(ua: str | None) -> str | None:
     # "Happ/3.1.0/ios CFNetwork/..." -> "Happ/3.1.0"; the rest is noise for a person.
     if not ua:
@@ -60,6 +111,7 @@ class LiveGateway:
     def __init__(self, bot: HttpBotClient, panel: PanelClient, sub_base: str):
         self.bot, self.panel, self.sub_base = bot, panel, sub_base
         self._static = MockGateway()  # plans and the public network block stay static for now
+        self._bg: set[asyncio.Future] = set()  # long usage loads that outlived a request
 
     async def aclose(self) -> None:
         await self.bot.aclose()
@@ -126,7 +178,15 @@ class LiveGateway:
         usage: dict[str, PanelUsage] = {
             k: ok(results[1 + 2 * n + i], PanelUsage()) for i, k in enumerate(kinds)
         }
-        node_name = {nd.uuid: nd.name for nd in nodes}
+        node_name = {nd.uuid: node_label(nd.name) for nd in nodes}
+
+        # Monthly bars: one longer, separately cached call per user, from its creation date
+        # (never more than MONTHS back). A failure here only hides the monthly view.
+        oldest = month_start(today, MONTHS - 1)
+        long_kinds = [k for k in kinds if users.get(k) is not None]
+        long_usage = await self._long_usage(
+            {k: (ids[k], self._long_start(users[k], oldest)) for k in long_kinds}, today
+        )
 
         daily = {k: self._daily(usage[k]) for k in kinds}
         subs = []
@@ -168,11 +228,12 @@ class LiveGateway:
             ],
             traffic_daily=traffic_daily,
             traffic_by_node=self._by_node([usage[k] for k in kinds], set(days)),
+            traffic_monthly=monthly(long_usage, today),
             payments=profile.payments,
             stats=profile.stats,
             nodes=[
                 CabinetNode(
-                    name=nd.name,
+                    name=node_label(nd.name),
                     country=(nd.countryCode or "").lower() or None,
                     online=nd.isConnected,
                 )
@@ -180,6 +241,40 @@ class LiveGateway:
                 if not nd.isDisabled
             ],
         )
+
+    async def _long_usage(
+        self, wanted: dict[str, tuple[int, date]], today: date
+    ) -> dict[str, PanelUsage]:
+        """The long range per account. Waits at most MONTHLY_WAIT: a cold, slow panel call keeps
+        running in the background and fills the 10 min cache for the next page load."""
+        if not wanted:
+            return {}
+        kinds = list(wanted)
+        task = asyncio.ensure_future(
+            gather(
+                *(self.panel.usage(uid, start, today, long=True) for uid, start in wanted.values())
+            )
+        )
+        self._bg.add(task)
+        task.add_done_callback(self._bg.discard)
+        try:
+            results = await asyncio.wait_for(asyncio.shield(task), MONTHLY_WAIT)
+        except TimeoutError:
+            log.info("panel monthly usage is slow, served without it")
+            return {}
+        out: dict[str, PanelUsage] = {}
+        for k, r in zip(kinds, results, strict=True):
+            if isinstance(r, BaseException):
+                log.warning("panel monthly usage failed: %s", type(r).__name__)
+            else:
+                out[k] = r
+        return out
+
+    @staticmethod
+    def _long_start(u: PanelUser | None, oldest: date) -> date:
+        if u is None or u.createdAt is None:
+            return oldest
+        return max(oldest, u.createdAt.astimezone(MSK).date())
 
     @staticmethod
     def _daily(u: PanelUsage) -> dict[date, int]:
@@ -203,9 +298,10 @@ class LiveGateway:
                     dates.append(None)
             for s in u.series:
                 total = sum(v for d, v in zip(dates, s.data, strict=False) if d in window)
+                name = node_label(s.name)
                 row = acc.setdefault(
-                    s.name,
-                    NodeTraffic(node=s.name, country=(s.countryCode or "").lower() or None),
+                    name,
+                    NodeTraffic(node=name, country=(s.countryCode or "").lower() or None),
                 )
                 row.bytes_30d += int(total)
         return sorted((r for r in acc.values() if r.bytes_30d > 0), key=lambda r: -r.bytes_30d)
@@ -248,6 +344,7 @@ class LiveGateway:
                 limit_bytes=u.trafficLimitBytes or None,
                 reset=_RESET.get(u.trafficLimitStrategy, "none"),
                 month_used_bytes=month if daily else None,
+                lifetime_used_bytes=u.userTraffic.lifetimeUsedTrafficBytes,
             ),
             online_at=u.userTraffic.onlineAt,
             last_node=node_name.get(u.userTraffic.lastConnectedNodeUuid or ""),

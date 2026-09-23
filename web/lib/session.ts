@@ -45,5 +45,5 @@ export async function redirectIfSignedIn(to: string): Promise<void> {
 }
 
 // 503 here means the api is up but the bot did not answer (error bot_unavailable).
-export const getCabinet = () => authed<CabinetData>("/api/cabinet");
+export const getCabinet = (demo?: string | null) => authed<CabinetData>(demo ? `/api/cabinet?demo=${encodeURIComponent(demo)}` : "/api/cabinet");
 export const getSessions = () => authed<SessionInfo[]>("/api/me/sessions");

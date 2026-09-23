@@ -1,20 +1,29 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.accounts import CurrentAuth, audit
 from app.db import Conn
 from app.errors import ApiError
 from app.gateway import get_gateway, is_demo
 from app.gateway.base import BotGateway, CabinetResponse, GatewayUnavailable
+from app.gateway.mock import SCENARIOS, MockGateway
 
 router = APIRouter()
 Gateway = Annotated[BotGateway, Depends(get_gateway)]
 
 
 @router.get("/cabinet")
-async def cabinet(auth: CurrentAuth, gw: Gateway) -> CabinetResponse:
+async def cabinet(
+    auth: CurrentAuth, gw: Gateway, demo_scenario: Annotated[str | None, Query(alias="demo")] = None
+) -> CabinetResponse:
     telegram_id = auth.account["telegram_id"]
+    if demo_scenario is not None:
+        # Owner preview of states his own account is not in: always mock data, marked demo.
+        if demo_scenario not in SCENARIOS:
+            raise ApiError(400, "invalid_request")
+        data = await MockGateway().cabinet(telegram_id or 0, scenario=demo_scenario)
+        return CabinetResponse(linked=True, demo=True, data=data)
     demo = is_demo(gw)
     if telegram_id is None:
         return CabinetResponse(linked=False, demo=demo)

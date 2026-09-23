@@ -37,7 +37,7 @@ export type CabinetSubscription = {
   days_left: number | null;
   device_limit: number | null;
   sub_url: string | null;
-  traffic: { used_bytes: number | null; limit_bytes: number | null; reset: string; month_used_bytes: number | null } | null;
+  traffic: { used_bytes: number | null; limit_bytes: number | null; reset: string; month_used_bytes: number | null; lifetime_used_bytes?: number | null } | null;
   package: { code: string; until: string | null; limit_bytes: number | null } | null;
   online_at: string | null;
   last_node: string | null;
@@ -76,12 +76,18 @@ export type BotCabinet = {
   devices: CabinetDevice[];
   traffic_daily: { date: string; main_bytes: number; obhod_bytes: number }[];
   traffic_by_node: { node: string; country: string | null; bytes_30d: number }[];
+  // Months since the first one with traffic, oldest first, at most 24 (may be empty: the long
+  // panel range is loaded in the background on a cold cache).
+  traffic_monthly?: { month: string; main_bytes: number; obhod_bytes: number }[];
   payments: CabinetPayment[];
   stats: { payments_count: number; paid_total_rub: number; first_payment_at: string | null; last_payment_at: string | null };
   nodes: { name: string; country: string | null; online: boolean }[];
 };
 
-// GET /api/cabinet
+// GET /api/cabinet, GET /api/cabinet?demo=<scenario> (owner preview on mock data)
+export const DEMO_SCENARIOS = ["active", "expiring", "expired", "none"] as const;
+export type DemoScenario = (typeof DEMO_SCENARIOS)[number];
+
 export type CabinetData = { linked: boolean; demo: boolean; data: BotCabinet | null };
 
 export type ApiError = { error: string; message: string };

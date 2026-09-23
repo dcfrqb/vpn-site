@@ -116,25 +116,30 @@ def panel_device(uid, hwid):
     }
 
 
-def panel_usage(days=3):
-    from datetime import timedelta
+def panel_usage(days=3, start=None, end=None):
+    """Every day of [start, end] (default: the last `days` days), 1 GB on the last `days`."""
+    from datetime import date, timedelta
 
     from app.gateway.live import MSK
 
     today = datetime.now(UTC).astimezone(MSK).date()
-    cats = [(today - timedelta(days=days - 1 - i)).isoformat() for i in range(days)]
+    end = date.fromisoformat(end) if end else today
+    start = date.fromisoformat(start) if start else end - timedelta(days=days - 1)
+    n = (end - start).days + 1
+    cats = [(start + timedelta(days=i)).isoformat() for i in range(n)]
+    data = [GB if (end - start).days - i < days else 0 for i in range(n)]
     return {
         "categories": cats,
-        "sparklineData": [GB] * days,
+        "sparklineData": data,
         "topNodes": [],
         "series": [
             {
                 "uuid": NODE_UUID,
-                "name": "nl-1",
+                "name": "remnanode-nl-1",
                 "color": "#fff",
                 "countryCode": "NL",
-                "total": days * GB,
-                "data": [GB] * days,
+                "total": sum(data),
+                "data": data,
             }
         ],
     }
@@ -143,7 +148,7 @@ def panel_usage(days=3):
 PANEL_NODE = {
     "uuid": NODE_UUID,
     "id": 1,
-    "name": "nl-1",
+    "name": "Remnanode-nl-1",
     "address": "198.51.100.10",
     "port": 2222,
     "isConnected": True,
@@ -169,6 +174,7 @@ class FakePanel:
         }
         self.down = False
         self.deleted: list[dict] = []
+        self.usage_ranges: list[tuple[str, str]] = []
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         self.calls.append(req)
@@ -199,7 +205,8 @@ class FakePanel:
             devs = self.devices.get(int(path.rsplit("/", 1)[1]), [])
             return ok({"total": len(devs), "devices": devs})
         if path.startswith("/api/bandwidth-stats/users/"):
-            return ok(panel_usage())
+            self.usage_ranges.append((req.url.params["start"], req.url.params["end"]))
+            return ok(panel_usage(start=req.url.params["start"], end=req.url.params["end"]))
         return httpx.Response(404)
 
 
@@ -363,9 +370,9 @@ def test_panel_calls_match_contract():
         devs = await pc.devices(MAIN_ID)
         assert devs[0].hwid == "own/hw 1" and not hasattr(devs[0], "requestIp")
         nodes = await pc.nodes()
-        assert nodes[0].name == "nl-1" and "address" not in nodes[0].model_dump()
+        assert nodes[0].name == "Remnanode-nl-1" and "address" not in nodes[0].model_dump()
         usage = await pc.usage(MAIN_ID, datetime(2026, 9, 1).date(), datetime(2026, 9, 23).date())
-        assert usage.series[0].name == "nl-1"
+        assert usage.series[0].name == "remnanode-nl-1"
         found = await pc.find_user_by_telegram(TG)
         assert [x.id for x in found] == [MAIN_ID, OBHOD_ID]
         assert await pc.delete_device(MAIN_ID, "own/hw 1") is True
@@ -631,3 +638,180 @@ def test_delete_device_needs_origin(client, live_gw):
     client.post("/api/auth/telegram", json=telegram_payload(TG))
     res = client.delete("/api/cabinet/devices/abc", headers={"Origin": "https://evil.example"})
     assert res.status_code == 403
+
+
+# ---------- node names, monthly traffic, lifetime, demo scenarios ----------
+
+
+@pytest.mark.parametrize(
+    ("raw", "label"),
+    [
+        ("remnanode-nl-2", "nl-2"),
+        ("RemnaNode-fr", "fr"),
+        ("remnanode-ru-1", "ru-1"),
+        ("usa", "usa"),
+        ("nl-remnanode-1", "nl-remnanode-1"),
+        ("remnanode-", "remnanode-"),
+    ],
+)
+def test_node_label(raw, label):
+    from app.gateway.live import node_label
+
+    assert node_label(raw) == label
+
+
+def test_monthly_aggregation():
+    from datetime import date
+
+    from app.gateway.live import monthly
+    from app.panel import PanelUsage
+
+    today = date(2026, 9, 23)
+    main = PanelUsage(
+        categories=["2026-05-31", "2026-06-01", "2026-06-15", "2026-08-02", "2026-09-23"],
+        sparklineData=[0, GB, 2 * GB, 3 * GB, 4 * GB],
+    )
+    obhod = PanelUsage(categories=["2026-09-01", "2026-09-02"], sparklineData=[GB, GB])
+    out = monthly({"main": main, "obhod": obhod}, today)
+    # starts at the first month with traffic (may has only a zero), gaps are zeros
+    assert [m.month for m in out] == ["2026-06", "2026-07", "2026-08", "2026-09"]
+    assert [m.main_bytes for m in out] == [3 * GB, 0, 3 * GB, 4 * GB]
+    assert [m.obhod_bytes for m in out] == [0, 0, 0, 2 * GB]
+    assert monthly({"main": PanelUsage()}, today) == []
+
+    # never more than 24 months, the current one included
+    old = PanelUsage(categories=["2023-01-10", "2026-09-01"], sparklineData=[GB, GB])
+    out = monthly({"main": old}, today)
+    assert len(out) == 24 and out[0].month == "2024-10" and out[-1].month == "2026-09"
+
+    # across a year boundary
+    jan = PanelUsage(categories=["2025-12-31", "2026-01-01"], sparklineData=[GB, GB])
+    out = monthly({"main": jan}, date(2026, 1, 5))
+    assert [m.month for m in out] == ["2025-12", "2026-01"]
+
+
+def test_live_monthly_and_lifetime():
+    from app.gateway.live import MSK, month_start
+
+    fp = FakePanel()
+    fp.users[OBHOD_ID]["createdAt"] = "2020-01-01T00:00:00.000Z"  # older than 24 months
+    gw = make_live(panel=fp)
+    today = datetime.now(UTC).astimezone(MSK).date()
+
+    async def go():
+        first = await gw.cabinet(TG)
+        second = await gw.cabinet(TG)
+        return first, second
+
+    cab, _ = run(go())
+    assert cab.partial is False
+    months = cab.traffic_monthly
+    assert months[-1].month == today.strftime("%Y-%m")
+    assert sum(m.main_bytes for m in months) == 3 * GB
+    assert sum(m.obhod_bytes for m in months) == 3 * GB
+    main, obhod = cab.subscriptions
+    assert main.traffic.lifetime_used_bytes == 50 * GB
+    # one long call per user: from createdAt (MSK), or 24 months back at most
+    long_ranges = {
+        ("2025-12-01", today.isoformat()),
+        (month_start(today, 23).isoformat(), today.isoformat()),
+    }
+    assert long_ranges <= set(fp.usage_ranges)
+    # the long range is cached: the second cabinet did not ask again
+    assert sum(1 for r in fp.usage_ranges if r in long_ranges) == 2
+
+
+def test_live_monthly_slow_is_skipped_then_cached(monkeypatch):
+    import app.gateway.live as live_mod
+
+    monkeypatch.setattr(live_mod, "MONTHLY_WAIT", 0.05)
+    fp = FakePanel()
+    today = datetime.now(UTC).astimezone(live_mod.MSK).date()
+    from datetime import timedelta
+
+    cut = (today - timedelta(days=40)).isoformat()
+
+    async def handler(req):
+        start = req.url.params.get("start", "")
+        if req.url.path.startswith("/api/bandwidth-stats/") and start < cut:
+            await asyncio.sleep(0.2)  # the long range is slow
+        return fp(req)
+
+    gw = LiveGateway(
+        make_bot(FakeBot()),
+        PanelClient("http://panel", "t", transport=httpx.MockTransport(handler)),
+        "https://sub.example.com",
+    )
+
+    async def go():
+        first = await gw.cabinet(TG)
+        await asyncio.sleep(0.3)  # the background load finishes and fills the cache
+        second = await gw.cabinet(TG)
+        return first, second
+
+    first, second = run(go())
+    assert first.traffic_monthly == [] and first.partial is False
+    assert second.traffic_monthly and second.traffic_monthly[-1].month == today.strftime("%Y-%m")
+
+
+def test_live_node_names_stripped():
+    cab = run(make_live().cabinet(TG))
+    assert cab.nodes[0].name == "nl-1"
+    assert cab.traffic_by_node[0].node == "nl-1"
+    assert cab.subscriptions[0].last_node == "nl-1"
+    assert "remnanode" not in cab.model_dump_json().lower()
+
+
+@pytest.mark.parametrize(
+    ("scenario", "days", "status", "kinds"),
+    [
+        ("active", 35, "active", ["main", "obhod"]),
+        ("expiring", 3, "active", ["main", "obhod"]),
+        ("expired", 0, "expired", ["main"]),
+        ("none", None, None, []),
+    ],
+)
+def test_mock_scenarios(scenario, days, status, kinds):
+    for tg_id in (1, 2, 3):
+        cab = run(MockGateway().cabinet(tg_id, scenario=scenario))
+        assert [s.kind for s in cab.subscriptions] == kinds
+        if kinds:
+            main = cab.subscriptions[0]
+            assert (main.days_left, main.status, main.is_lifetime) == (days, status, False)
+            assert cab.traffic_monthly and main.traffic.lifetime_used_bytes > 0
+        else:
+            assert cab.devices == [] and cab.traffic_monthly == [] and cab.payments == []
+        if scenario == "expired":
+            assert cab.subscriptions[0].valid_until < datetime.now(UTC)
+
+
+def test_mock_monthly_shape():
+    cab = run(MockGateway().cabinet(9))
+    months = [m.month for m in cab.traffic_monthly]
+    assert months == sorted(months) and 6 <= len(months) <= 24
+    assert cab.traffic_monthly[-1].main_bytes == sum(
+        d.main_bytes for d in cab.traffic_daily if d.date.strftime("%Y-%m") == months[-1]
+    )
+
+
+def test_cabinet_demo_scenarios(client, live_gw):
+    assert client.get("/api/cabinet?demo=expiring").status_code == 401
+    live_gw()  # even on the live gateway the preview is mock data
+    client.post("/api/auth/telegram", json=telegram_payload(TG))
+    res = client.get("/api/cabinet?demo=expiring").json()
+    assert res["linked"] is True and res["demo"] is True
+    assert res["data"]["subscriptions"][0]["days_left"] == 3
+    assert "sub.example.com/demo-" in res["data"]["subscriptions"][0]["sub_url"]
+    assert client.get("/api/cabinet?demo=none").json()["data"]["subscriptions"] == []
+    assert (
+        client.get("/api/cabinet?demo=expired").json()["data"]["subscriptions"][0]["status"]
+        == "expired"
+    )
+    assert client.get("/api/cabinet?demo=lifetime-hack").status_code == 400
+    assert client.get("/api/cabinet").json()["demo"] is False
+
+
+def test_cabinet_demo_without_telegram(client):
+    register(client)
+    res = client.get("/api/cabinet?demo=active").json()
+    assert res["demo"] is True and res["data"]["subscriptions"][0]["days_left"] == 35
