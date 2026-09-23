@@ -16,8 +16,8 @@
   --lcd:#0f0e12;
   --lcd-ink:#f2f2ee;
   --lcd-dim:#6d6c73;
-  --sans:var(--font-onest), "Helvetica Neue", Arial, sans-serif;
-  --mono:var(--font-jbm), ui-monospace, "SF Mono", Menlo, monospace;
+  --sans:"Onest Variable", "Helvetica Neue", Arial, sans-serif;
+  --mono:"JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   --gut:clamp(16px, 4.5vw, 66px);
   --w:1240px;
 }
