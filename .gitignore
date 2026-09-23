@@ -11,6 +11,7 @@ secrets/
 
 # db dumps and data
 *.sql
+!api/migrations/*.sql
 *.dump
 *.sqlite
 *.sqlite3
