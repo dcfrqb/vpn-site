@@ -25,7 +25,7 @@ function DemoBar({ scenario }: { scenario: DemoScenario }) {
     <div className="cb-demo" role="note">
       <span>
         <i aria-hidden="true" />
-        пример: {scenario}
+        пример: {SCENARIO_LABEL[scenario]}
       </span>
       <nav aria-label="Другие примеры">
         {DEMO_SCENARIOS.filter((s) => s !== scenario).map((s) => (
