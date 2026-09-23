@@ -27,7 +27,7 @@ services:
     container_name: vpn-site-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-vpn_site}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-vpn_site}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vpn_site}:${POSTGRES_PASSWORD}@vpn-site-db:5432/${POSTGRES_DB:-vpn_site}
       BOT_API_URL: ${BOT_API_URL:-}
       BOT_API_TOKEN: ${BOT_API_TOKEN:-}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://vpn.crs-projects.com}
@@ -48,6 +48,7 @@ services:
     ports:
       - "127.0.0.1:${API_PORT:-8040}:8000"
     networks:
+      # the bot network also has a service called "db": always use unique container names
       default: {}
       # @crs_vpn_bot calls /api/internal/tg-login/* as http://vpn-site-api:8000
       botnet:
