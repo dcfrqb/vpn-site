@@ -4,7 +4,7 @@ export default function Nav({ nodes, countries }: Props) {
   return (
     <nav className="nav" aria-label="Разделы">
       <a className="brand" href="#top">
-        crs<b>·</b>vpn
+        crs<b className="logo-dot" aria-hidden="true" />vpn
         <br />
         <span className="pn">private network</span>
       </a>

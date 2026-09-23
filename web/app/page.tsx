@@ -169,7 +169,7 @@ export default async function Home() {
         <div className="wrap fgrid">
           <div>
             <div className="fbrand">
-              crs<b>·</b>vpn
+              crs<b className="logo-dot" aria-hidden="true" />vpn
             </div>
             <p style={{ margin: "12px 0 0", maxWidth: "30ch" }}>реквизиты продавца появятся здесь после проверки юристом.</p>
           </div>

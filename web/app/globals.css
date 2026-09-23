@@ -505,3 +505,5 @@ img{max-width:100%}
 .cb-screen.is-urgent .bars i.w,.cb-screen.is-ended .bars i.w{background:#fff}
 .cb-screen.is-urgent .days.dim .big,.cb-screen.is-ended .days.dim .big,.cb-screen.is-ended .days .big.word.ended{color:#fff}
 .cb-screen.is-urgent .meter.near .row span:last-child,.cb-screen.is-urgent .meter.near .sub-row span:first-child{color:#fff}
+/* logo dot: drawn, centered on the x-height of the lowercase letters (the "·" glyph sits on cap-height) */
+.logo-dot{display:inline-block;width:.15em;height:.15em;border-radius:50%;background:var(--accent);margin:0 .1em;vertical-align:.19em}

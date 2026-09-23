@@ -5,7 +5,7 @@ export default function InnerHeader({ signedIn }: { signedIn: boolean }) {
     <div className="wrap">
       <header className="inner-nav">
         <a className="brand" href="/">
-          crs<b>·</b>vpn
+          crs<b className="logo-dot" aria-hidden="true" />vpn
         </a>
         <nav className="inner-links" aria-label="Кабинет">
           {signedIn ? (
