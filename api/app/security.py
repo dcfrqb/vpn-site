@@ -83,6 +83,8 @@ class RateLimiter:
     LIMITS = {
         "login": (10, 15 * 60),
         "email_check": (20, 15 * 60),
+        "tg_start": (60, 15 * 60),
+        "tg_poll": (600, 15 * 60),
         "register": (5, 60 * 60),
         "forgot": (3, 60 * 60),
         "passkey": (20, 15 * 60),
@@ -121,6 +123,8 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
         if (
             request.method not in ("GET", "HEAD", "OPTIONS")
             and request.url.path.startswith("/api/")
+            # server-to-server calls from the bot authenticate with X-Internal-Token instead
+            and not request.url.path.startswith("/api/internal/")
             and request.headers.get("origin") != get_settings().public_origin
         ):
             return error_response(403, "bad_origin")

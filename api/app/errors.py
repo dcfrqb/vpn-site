@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 # User-facing texts: Russian, informal, no letter "yo".
 MESSAGES = {
     "invalid_request": "Проверь данные в форме",
+    "forbidden": "Нет доступа",
     "invalid_email": "Похоже, в email ошибка",
     "weak_password": "Пароль должен быть от 10 до 128 символов и не совпадать с email",
     "email_taken": "Этот email уже занят. Попробуй войти или восстановить пароль",

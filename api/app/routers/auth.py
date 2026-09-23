@@ -139,43 +139,11 @@ async def logout_all(request: Request, response: Response, conn: Conn, auth: May
 async def telegram_login(
     body: TelegramIn, request: Request, response: Response, conn: Conn, auth: MaybeAuth
 ):
-    data = body.model_dump(exclude_none=True)
-    telegram.verify_widget(data)
-    names = (body.username, body.first_name)
-    owner = await conn.fetchval("select id from web.accounts where telegram_id = $1", body.id)
-
-    if auth is not None:
-        if owner is not None and owner != auth.account_id:
-            raise ApiError(409, "telegram_taken")
-        await conn.execute(
-            "update web.accounts set telegram_id = $2, telegram_username = $3,"
-            " telegram_first_name = $4 where id = $1",
-            auth.account_id,
-            body.id,
-            *names,
-        )
-        if owner is None:
-            await audit(conn, request, "telegram_link", auth.account_id, telegram_id=body.id)
-        return {"account": await account_json(conn, await get_account(conn, auth.account_id))}
-
-    if owner is None:
-        owner = await conn.fetchval(
-            "insert into web.accounts (telegram_id, telegram_username, telegram_first_name)"
-            " values ($1, $2, $3) on conflict (telegram_id) do update"
-            " set telegram_username = excluded.telegram_username returning id",
-            body.id,
-            *names,
-        )
-        await audit(conn, request, "register", owner, method="telegram")
-    else:
-        await conn.execute(
-            "update web.accounts set telegram_username = $2, telegram_first_name = $3"
-            " where id = $1",
-            owner,
-            *names,
-        )
-    await start_session(conn, request, response, owner, "telegram")
-    return {"account": await account_json(conn, await get_account(conn, owner))}
+    telegram.verify_widget(body.model_dump(exclude_none=True))
+    account_id = await telegram.apply_identity(
+        conn, request, response, auth, body.id, body.username, body.first_name
+    )
+    return {"account": await account_json(conn, await get_account(conn, account_id))}
 
 
 @router.post("/forgot")

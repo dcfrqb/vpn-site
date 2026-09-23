@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     session_cookie: str = "__Host-sid"
     telegram_login_bot_token: str = ""
     telegram_bot_username: str = ""
+    # shared with @crs_vpn_bot for /api/internal/tg-login/*
+    site_internal_token: str = ""
     webauthn_rp_id: str = "vpn.crs-projects.com"
     webauthn_rp_name: str = "CRS VPN"
 

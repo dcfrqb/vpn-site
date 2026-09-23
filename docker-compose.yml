@@ -41,11 +41,17 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      SITE_INTERNAL_TOKEN: ${SITE_INTERNAL_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "127.0.0.1:${API_PORT:-8040}:8000"
+    networks:
+      default: {}
+      # @crs_vpn_bot calls /api/internal/tg-login/* as http://vpn-site-api:8000
+      botnet:
+        aliases: [vpn-site-api]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).status==200 else 1)"]
       interval: 15s
@@ -53,6 +59,7 @@ services:
       retries: 5
     mem_limit: 256m
     cpus: 0.5
+
 
   web:
     build:
@@ -70,6 +77,11 @@ services:
       - "127.0.0.1:${WEB_PORT:-3040}:3000"
     mem_limit: 384m
     cpus: 1.0
+
+networks:
+  botnet:
+    name: vpn-bot_default
+    external: true
 
 volumes:
   pgdata:

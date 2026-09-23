@@ -47,6 +47,8 @@ def test_settings():
     s.database_url = TEST_DB
     s.public_origin = ORIGIN
     s.telegram_login_bot_token = BOT_TOKEN
+    s.telegram_bot_username = "test_login_bot"
+    s.site_internal_token = "internal-test-token"
     s.webauthn_rp_id = "testserver"
     s.smtp_host = ""
     yield s
