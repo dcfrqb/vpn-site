@@ -11,7 +11,8 @@
 | Compose-проект | `vpn-site` (сеть `vpn-site_default`) |
 | Фронт | `127.0.0.1:3040` |
 | API | `127.0.0.1:8040` |
-| БД | свой контейнер `vpn-site-db`, порт наружу не публикуется |
+| БД | свой контейнер `vpn-site-db`, порт наружу не публикуется, том `vpn-site-pgdata` |
+| Вебхук деплоя | `127.0.0.1:8041`, systemd `vpn-site-deployer` |
 | Домен | `vpn.crs-projects.com`, nginx vhost `deploy/nginx/vpn.crs-projects.com.conf`, сертификат certbot |
 | Доступ к стенду | basic auth, файл `/etc/nginx/.htpasswd-vpn-site` |
 
