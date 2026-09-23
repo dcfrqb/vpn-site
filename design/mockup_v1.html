@@ -1,0 +1,574 @@
+<title>Макет CRS VPN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@100;200;300;400&family=JetBrains+Mono:wght@200;300;400;500&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --canvas:#f6f8f7;
+  --paper:#ffffff;
+  --ink:#0f0e12;
+  --ink-2:#4d4d52;
+  --muted:#8c8c93;
+  --hair:#dcdedd;
+  --hair-2:#b2b2b2;
+  --alu:#e3e5e4;
+  --alu-2:#cfd2d1;
+  --key:#2a292e;
+  --accent:#f05a24;
+  --ok:#1f8a4c;
+  --bad:#c0262c;
+  --lcd:#0f0e12;
+  --lcd-ink:#f2f2ee;
+  --lcd-dim:#6d6c73;
+  --sans:"Onest", "Helvetica Neue", Arial, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --gut:clamp(16px, 4.5vw, 66px);
+  --w:1240px;
+}
+*{box-sizing:border-box}
+body{background:var(--canvas);color:var(--ink);font-family:var(--sans);font-weight:200;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:var(--w);margin:0 auto;padding-inline:var(--gut)}
+.mono{font-family:var(--mono)}
+.caps{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:12px;font-weight:400}
+.hair{border:0;border-top:1px solid var(--hair);margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* ---------- nav ---------- */
+.nav{display:grid;grid-template-columns:1.1fr repeat(4,1fr) auto;gap:24px;align-items:start;padding-block:26px 22px}
+.brand{font-size:clamp(22px,2.3vw,30px);line-height:1.05;font-weight:200;text-decoration:none}
+.brand .pn{font-size:inherit;color:inherit}
+.brand b{font-weight:200;color:var(--accent)}
+.navitem{display:grid;grid-template-columns:34px 1fr;gap:10px;text-decoration:none}
+.navitem svg{width:34px;height:34px}
+.navitem .t,.navitem .s{display:block}
+.navitem .t{font-size:clamp(18px,1.7vw,24px);line-height:1.05;font-weight:200}
+.navitem .s{font-size:12.5px;color:var(--ink-2);line-height:1.45;margin-top:8px;font-weight:300}
+.navitem:hover .t{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.serial{font-family:var(--mono);font-size:10px;line-height:1.4;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em;text-align:right;white-space:nowrap}
+.serial b{font-weight:500;color:var(--ink)}
+
+/* ---------- hero ---------- */
+.hero{display:grid;grid-template-columns:1fr minmax(300px,440px);gap:clamp(24px,5vw,80px);align-items:center;padding-block:clamp(28px,6vw,80px) clamp(40px,7vw,96px)}
+.eyebrow{display:flex;gap:14px;align-items:center;margin-bottom:22px;color:var(--ink-2)}
+.eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+h1{font-weight:100;font-size:clamp(46px,8.2vw,112px);line-height:.95;letter-spacing:-.035em;margin:0 0 26px;text-wrap:balance}
+h1 em{font-style:normal;font-weight:300}
+.lede{max-width:34ch;font-size:clamp(17px,1.5vw,20px);color:var(--ink-2);margin:0 0 30px;font-weight:200}
+.btns{display:flex;flex-wrap:wrap;gap:12px}
+.btn{font:300 16px/1 var(--sans);border-radius:999px;padding:15px 26px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;gap:10px;align-items:center}
+.btn.solid{background:var(--ink);color:var(--canvas)}
+.btn.solid:hover{background:#2a292e}
+.btn:hover{background:rgba(15,14,18,.05)}
+.btn .k{font-family:var(--mono);font-size:11px;opacity:.6}
+
+/* device */
+.device{width:100%;max-width:440px;justify-self:end}
+.device svg{width:100%;height:auto;display:block;filter:drop-shadow(0 30px 40px rgba(15,14,18,.10))}
+.device .cap{display:flex;justify-content:space-between;margin-top:14px;color:var(--muted)}
+.dkey{cursor:pointer}
+.dkey:hover rect.face{fill:#3a393f}
+.dkey.on rect.face{fill:#f2f2ee}
+.dkey.on text{fill:var(--ink)}
+#power{cursor:pointer}
+@media (prefers-reduced-motion:no-preference){
+  .vu rect{transition:opacity .25s}
+  #power circle.ring{transition:fill .25s}
+}
+
+/* ---------- spec list ---------- */
+.band{padding-block:clamp(48px,7vw,96px)}
+.sec-head{display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:end;margin-bottom:40px}
+h2{font-weight:100;font-size:clamp(34px,4.6vw,60px);line-height:1;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.sec-head p{margin:0;max-width:52ch;color:var(--ink-2);font-size:17px}
+.specs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink)}
+.spec{padding:22px 22px 26px 0;border-bottom:1px solid var(--hair);display:grid;grid-template-columns:62px 1fr;gap:12px}
+.spec:not(:nth-child(3n+1)){padding-left:22px;border-left:1px solid var(--hair)}
+.spec .n{font-family:var(--mono);font-size:30px;font-weight:200;line-height:1;letter-spacing:-.04em}
+.spec .l{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em;line-height:1.45;font-weight:400}
+.spec .d{grid-column:2;font-size:14.5px;color:var(--ink-2);margin-top:-4px}
+
+/* ---------- plans ---------- */
+.dark{background:var(--ink);color:var(--canvas)}
+.dark .sec-head p{color:#a9a8ae}
+.period{display:inline-flex;border:1px solid #3a393f;border-radius:999px;padding:4px;gap:2px;margin-bottom:34px}
+.period button{font:400 12px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:#a9a8ae;background:transparent;border:0;border-radius:999px;padding:11px 16px;cursor:pointer}
+.period button[aria-pressed="true"]{background:var(--canvas);color:var(--ink)}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.plan{background:#18171c;border:1px solid #2c2b31;border-radius:22px;padding:26px 24px 24px;display:flex;flex-direction:column;gap:22px}
+.plan.hl{background:var(--canvas);color:var(--ink);border-color:var(--canvas)}
+.plan-top{display:flex;justify-content:space-between;align-items:flex-start}
+.plan h3{margin:0;font-weight:200;font-size:34px;line-height:1;letter-spacing:-.02em}
+.plan .code{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8c8b92}
+.plan.hl .code{color:var(--ink-2)}
+.led{width:10px;height:10px;border-radius:50%;background:#3a393f;display:inline-block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.plan.hl .led{background:var(--accent)}
+.price{display:flex;align-items:baseline;gap:8px}
+.price .v{font-family:var(--mono);font-weight:200;font-size:54px;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums}
+.price .u{font-size:14px;color:#8c8b92}
+.plan.hl .price .u{color:var(--ink-2)}
+.permo{font-family:var(--mono);font-size:12px;color:#8c8b92;margin-top:-14px;min-height:1.5em}
+.plan.hl .permo{color:var(--ink-2)}
+.sheet{list-style:none;margin:0;padding:0;border-top:1px solid #2c2b31}
+.plan.hl .sheet{border-top-color:var(--hair-2)}
+.sheet li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #2c2b31;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.plan.hl .sheet li{border-bottom-color:var(--hair)}
+.sheet li span:first-child{color:#8c8b92}
+.plan.hl .sheet li span:first-child{color:var(--ink-2)}
+.sheet li span:last-child{text-align:right}
+.plan .btn{justify-content:center;margin-top:auto;border-color:#4a4950;color:var(--canvas)}
+.plan .btn:hover{background:rgba(255,255,255,.06)}
+.plan.hl .btn{background:var(--accent);border-color:var(--accent);color:#fff}
+.plan.hl .btn:hover{background:#d94c19}
+.foot-note{margin-top:22px;font-size:13px;color:#8c8b92;max-width:80ch}
+.pay-row{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:34px;padding-top:22px;border-top:1px solid #2c2b31;color:#a9a8ae}
+
+/* ---------- cabinet ---------- */
+.cab{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px}
+.screen{background:var(--lcd);color:var(--lcd-ink);border-radius:22px;padding:22px;font-family:var(--mono);position:relative;border:10px solid #d4d7d6;box-shadow:inset 0 0 0 1px #000}
+.scr-top{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--lcd-dim)}
+.scr-top .on{color:var(--accent)}
+.days{display:flex;align-items:flex-end;gap:14px;margin:18px 0 8px}
+.days .big{font-size:clamp(72px,10vw,120px);font-weight:200;line-height:.85;letter-spacing:-.06em;font-variant-numeric:tabular-nums}
+.days .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--lcd-dim);padding-bottom:10px;line-height:1.5}
+.meter{margin-top:22px}
+.meter .row{display:flex;justify-content:space-between;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--lcd-dim);margin-bottom:8px}
+.bars{display:grid;grid-template-columns:repeat(32,1fr);gap:3px;height:22px}
+.bars i{background:#2a292e;border-radius:1px}
+.bars i.f{background:var(--lcd-ink)}
+.bars i.w{background:var(--accent)}
+.nodes{margin-top:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#2a292e;border:1px solid #2a292e}
+.node{background:var(--lcd);padding:10px 10px 9px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;gap:6px}
+.node .st{width:6px;height:6px;border-radius:50%;background:#3dd68c;align-self:center;flex:none}
+.node .ms{color:var(--lcd-dim);font-variant-numeric:tabular-nums}
+.side{display:flex;flex-direction:column;gap:18px}
+.panel{background:var(--paper);border:1px solid var(--hair);border-radius:22px;padding:22px}
+.panel h4{margin:0 0 14px;font-weight:300;font-size:20px;letter-spacing:-.01em}
+.link-box{display:flex;gap:8px;align-items:center;border:1px solid var(--hair);border-radius:12px;padding:6px 6px 6px 14px}
+.link-box code{font-family:var(--mono);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+.link-box button{font:400 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;border:0;background:var(--ink);color:var(--canvas);border-radius:8px;padding:10px 12px;cursor:pointer}
+.slots{display:flex;gap:6px;margin-top:10px}
+.slots i{flex:1;height:30px;border-radius:6px;border:1px solid var(--hair-2)}
+.slots i.u{background:var(--ink);border-color:var(--ink)}
+.kv{display:flex;justify-content:space-between;font-size:14px;color:var(--ink-2);margin-top:12px}
+.kv b{font-weight:400;color:var(--ink);font-family:var(--mono);font-size:13px}
+.example{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--hair-2);border-radius:999px;padding:4px 9px;color:var(--ink-2);margin-left:10px;vertical-align:middle}
+
+/* ---------- login ---------- */
+.login{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--ink)}
+.lg{padding:26px 26px 30px 0;display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--hair)}
+.lg + .lg{padding-left:26px;border-left:1px solid var(--hair)}
+.lg svg{width:40px;height:40px}
+.lg h3{margin:0;font-weight:200;font-size:26px;letter-spacing:-.015em}
+.lg p{margin:0;color:var(--ink-2);font-size:15px;max-width:34ch}
+.lg .btn{align-self:flex-start;margin-top:auto}
+
+/* ---------- footer ---------- */
+footer{background:var(--ink);color:#a9a8ae;padding-block:40px 120px;font-size:14px}
+.fgrid{display:grid;grid-template-columns:1.2fr repeat(3,1fr);gap:24px}
+.fgrid h5{margin:0 0 12px;font:400 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:#6d6c73}
+.fgrid a{display:block;text-decoration:none;padding:3px 0}
+.fgrid a:hover{color:var(--canvas)}
+.fbrand{font-size:26px;color:var(--canvas);font-weight:100;line-height:1.1}
+.fbrand b{font-weight:100;color:var(--accent)}
+
+/* ---------- cookie plate ---------- */
+.cookie{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));z-index:50;background:var(--ink);color:var(--canvas);border-radius:16px;border:1px solid #3a393f;padding:16px 16px 14px;box-shadow:0 18px 40px rgba(15,14,18,.22)}
+.cookie .hd{display:flex;justify-content:space-between;align-items:center;font:400 10.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:#8c8b92;margin-bottom:10px}
+.cookie .hd i{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:8px;vertical-align:1px}
+.cookie p{margin:0;font-size:13px;line-height:1.45;font-weight:300;color:#d9d8dd}
+.cookie p a{color:var(--canvas)}
+.cookie .row{display:flex;gap:8px;margin-top:14px}
+.cookie button{flex:1;font:300 13px/1 var(--sans);border-radius:999px;padding:11px 12px;border:1px solid #4a4950;background:transparent;color:var(--canvas);cursor:pointer}
+.cookie button:hover{border-color:#8c8b92}
+.cookie button.solid{background:var(--canvas);border-color:var(--canvas);color:var(--ink)}
+.cookie .opts{margin-top:12px;border-top:1px solid #2c2b31}
+.cookie .opts label{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2c2b31;font:400 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:#a9a8ae}
+.cookie input{accent-color:var(--accent);width:16px;height:16px}
+
+.toast{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--canvas);font:400 12px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border-radius:10px;z-index:60}
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  .serial{display:none}
+  .nav{grid-template-columns:1fr repeat(4,auto);gap:28px}
+}
+@media (max-width:1020px){
+  .nav{grid-template-columns:1fr 1fr 1fr;row-gap:20px}
+  .serial{display:none}
+  .hero{grid-template-columns:1fr}
+  .device{justify-self:center}
+  .plans{grid-template-columns:1fr}
+  .cab{grid-template-columns:1fr}
+  .sec-head{grid-template-columns:1fr}
+}
+@media (max-width:720px){
+  .nav{grid-template-columns:repeat(4,1fr);gap:14px 8px;padding-block:18px 16px}
+  .brand{grid-column:1/-1;font-size:22px}
+  .brand br{display:none}
+  .brand .pn{font-size:13px;color:var(--ink-2);margin-left:8px}
+  .navitem{grid-template-columns:1fr;justify-items:center;text-align:center;gap:6px}
+  .navitem svg{width:28px;height:28px}
+  .navitem .t{font-size:14px}
+  .navitem .s{display:none}
+  .hero{padding-block:24px 48px}
+  .lede{font-size:17px}
+  .cookie{left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));width:auto}
+  .cookie button{padding:13px 12px}
+  .specs{grid-template-columns:1fr}
+  .spec:not(:nth-child(3n+1)){padding-left:0;border-left:0}
+  .login{grid-template-columns:1fr}
+  .lg + .lg{padding-left:0;border-left:0}
+  .fgrid{grid-template-columns:1fr 1fr}
+  .nodes{grid-template-columns:repeat(2,1fr)}
+  .bars{grid-template-columns:repeat(20,1fr)}
+  .bars i:nth-child(n+21){display:none}
+}
+</style>
+
+<div class="wrap">
+  <nav class="nav" aria-label="Разделы">
+    <a class="brand" href="#top">crs<b>·</b>vpn<br><span class="pn">private network</span></a>
+    <a class="navitem" href="#plans">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="3" width="12" height="12" fill="#0f0e12"/><rect x="19" y="3" width="12" height="12" fill="none" stroke="#0f0e12" stroke-width="1.5"/><rect x="3" y="19" width="12" height="12" fill="none" stroke="#0f0e12" stroke-width="1.5"/><circle cx="25" cy="25" r="6" fill="#f05a24"/></svg>
+      <span><span class="t">тарифы</span><span class="s">lite / standard / pro<br>периоды и цены<br>способы оплаты</span></span>
+    </a>
+    <a class="navitem" href="#specs">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="13" fill="none" stroke="#0f0e12" stroke-width="1.5"/><ellipse cx="17" cy="17" rx="6" ry="13" fill="none" stroke="#0f0e12" stroke-width="1.5"/><line x1="4" y1="17" x2="30" y2="17" stroke="#0f0e12" stroke-width="1.5"/></svg>
+      <span><span class="t">сеть</span><span class="s">узлы и страны<br>приложения<br>статус</span></span>
+    </a>
+    <a class="navitem" href="#cabinet">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="5" width="28" height="18" rx="2" fill="#0f0e12"/><rect x="7" y="9" width="10" height="2" fill="#f05a24"/><rect x="7" y="14" width="16" height="2" fill="#f6f8f7"/><rect x="12" y="26" width="10" height="3" fill="#0f0e12"/></svg>
+      <span><span class="t">кабинет</span><span class="s">подписка<br>устройства<br>история оплат</span></span>
+    </a>
+    <a class="navitem" href="#login">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="12" cy="17" r="8" fill="none" stroke="#0f0e12" stroke-width="1.5"/><circle cx="12" cy="17" r="3" fill="#0f0e12"/><path d="M20 17h11M27 17v5M31 17v4" stroke="#0f0e12" stroke-width="1.5" fill="none"/></svg>
+      <span><span class="t">вход</span><span class="s">telegram<br>email и пароль<br>паскей</span></span>
+    </a>
+    <div class="serial" aria-hidden="true">модель <b>crs–01</b><br>серия 03 / 2026<br>9 узлов · 4 страны<br>xray · vless<br>сделано вручную</div>
+  </nav>
+  <hr class="hair">
+
+  <section class="hero" id="top">
+    <div>
+      <div class="eyebrow caps"><i></i> crs–01 · private network</div>
+      <h1>подключил<br>и <em>забыл.</em></h1>
+      <p class="lede">частная сеть на девяти узлах в четырех странах. одна ссылка на все устройства, без лимита трафика и рекламы на youtube.</p>
+      <div class="btns">
+        <a class="btn solid" href="#plans">выбрать тариф <span class="k">от 129 ₽</span></a>
+        <a class="btn" href="#login">войти</a>
+      </div>
+    </div>
+
+    <figure class="device" style="margin:0">
+      <svg viewBox="0 0 420 540" role="img" aria-label="Схема устройства CRS–01: дисплей, клавиши стран, кнопка питания">
+        <!-- body -->
+        <rect x="6" y="6" width="408" height="528" rx="30" fill="#e3e5e4" stroke="#c9cccb"/>
+        <rect x="6" y="6" width="408" height="528" rx="30" fill="none" stroke="#fff" stroke-opacity=".7" transform="translate(1 1)"/>
+        <!-- screws -->
+        <g fill="#c2c5c4"><circle cx="30" cy="30" r="5"/><circle cx="390" cy="30" r="5"/><circle cx="30" cy="510" r="5"/><circle cx="390" cy="510" r="5"/></g>
+        <!-- display -->
+        <rect x="40" y="46" width="240" height="160" rx="10" fill="#0f0e12"/>
+        <text id="d-state" x="56" y="74" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="1" fill="#f05a24">● ON</text>
+        <text x="264" y="74" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="1" fill="#6d6c73">CRS–01</text>
+        <text id="d-node" x="56" y="128" font-family="JetBrains Mono, monospace" font-size="40" font-weight="200" fill="#f2f2ee" letter-spacing="-1">NL–1</text>
+        <text id="d-ms" x="56" y="152" font-family="JetBrains Mono, monospace" font-size="12" fill="#6d6c73" letter-spacing="1">PING 38 MS · XHTTP</text>
+        <g class="vu" id="vu"></g>
+        <!-- speaker grille -->
+        <g id="grille"></g>
+        <!-- label strip -->
+        <text x="40" y="238" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.5" fill="#6d6c73">ВЫХОД / EXIT NODE</text>
+        <line x1="40" y1="246" x2="380" y2="246" stroke="#b2b2b2"/>
+        <!-- keys -->
+        <g id="keys"></g>
+        <!-- lower controls -->
+        <text x="40" y="382" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.5" fill="#6d6c73">ПИТАНИЕ</text>
+        <text x="236" y="382" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.5" fill="#6d6c73">УСТРОЙСТВА</text>
+        <line x1="40" y1="390" x2="380" y2="390" stroke="#b2b2b2"/>
+        <g id="power" role="button" tabindex="0" aria-label="Включить или выключить">
+          <circle cx="104" cy="452" r="50" fill="#cfd2d1"/>
+          <circle class="ring" cx="104" cy="452" r="40" fill="#f05a24"/>
+          <circle cx="104" cy="452" r="40" fill="none" stroke="#000" stroke-opacity=".12"/>
+          <path d="M104 432v16M92 440a17 17 0 1 0 24 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </g>
+        <g>
+          <circle cx="206" cy="452" r="22" fill="#cfd2d1"/><circle cx="206" cy="452" r="16" fill="#f6f8f7"/><line x1="206" y1="440" x2="206" y2="448" stroke="#0f0e12" stroke-width="2"/>
+        </g>
+        <g id="slots"></g>
+        <text x="380" y="512" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1.5" fill="#9a9da0">MADE BY CRS · 03</text>
+      </svg>
+      <figcaption class="cap caps"><span>нажми на страну</span><span>схема, не фото</span></figcaption>
+    </figure>
+  </section>
+</div>
+
+<hr class="hair">
+
+<section class="band" id="specs">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>что внутри</h2>
+      <p>никаких «сверхскоростей» и «военного шифрования». вот из чего сеть собрана на самом деле.</p>
+    </div>
+    <div class="specs">
+      <div class="spec"><span class="n">09</span><span class="l">узлов в сети</span><span class="d">свои серверы у четырех провайдеров, не аренда чужого сервиса</span></div>
+      <div class="spec"><span class="n">04</span><span class="l">страны выхода</span><span class="d">нидерланды, франция, сша, испания</span></div>
+      <div class="spec"><span class="n">∞</span><span class="l">трафик</span><span class="d">без лимита на всех тарифах, без урезания скорости</span></div>
+      <div class="spec"><span class="n">01</span><span class="l">ссылка</span><span class="d">одна подписка на телефон, ноутбук и телевизор</span></div>
+      <div class="spec"><span class="n">10</span><span class="l">устройств максимум</span><span class="d">2, 5 или 10, в зависимости от тарифа</span></div>
+      <div class="spec"><span class="n">24</span><span class="l">часа мониторинг</span><span class="d">узлы проверяются каждые 3 минуты, сбой видно сразу</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band dark" id="plans">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>тарифы</h2>
+      <p>три комплектации. чем дольше период, тем дешевле месяц.</p>
+    </div>
+    <div class="period" role="group" aria-label="Период оплаты">
+      <button type="button" data-m="1" aria-pressed="true">1 мес</button>
+      <button type="button" data-m="3" aria-pressed="false">3 мес</button>
+      <button type="button" data-m="6" aria-pressed="false">6 мес</button>
+      <button type="button" data-m="12" aria-pressed="false">12 мес</button>
+    </div>
+    <div class="plans">
+      <article class="plan" data-plan="lite">
+        <div class="plan-top"><div><div class="code">crs–01 / lite</div><h3>lite</h3></div><span class="led"></span></div>
+        <div class="price"><span class="v">129</span><span class="u">₽</span></div>
+        <div class="permo"></div>
+        <ul class="sheet">
+          <li><span>устройства</span><span>2</span></li>
+          <li><span>страны</span><span>nl</span></li>
+          <li><span>трафик</span><span>без лимита</span></li>
+          <li><span>youtube</span><span>без рекламы</span></li>
+          <li><span>ru-вход</span><span>—</span></li>
+        </ul>
+        <a class="btn" href="#login">выбрать lite</a>
+      </article>
+      <article class="plan hl" data-plan="standard">
+        <div class="plan-top"><div><div class="code">crs–01 / standard · чаще всего</div><h3>standard</h3></div><span class="led"></span></div>
+        <div class="price"><span class="v">249</span><span class="u">₽</span></div>
+        <div class="permo"></div>
+        <ul class="sheet">
+          <li><span>устройства</span><span>5</span></li>
+          <li><span>страны</span><span>nl · fr</span></li>
+          <li><span>трафик</span><span>без лимита</span></li>
+          <li><span>youtube</span><span>без рекламы</span></li>
+          <li><span>ru-вход</span><span>—</span></li>
+        </ul>
+        <a class="btn" href="#login">выбрать standard</a>
+      </article>
+      <article class="plan" data-plan="pro">
+        <div class="plan-top"><div><div class="code">crs–01 / pro</div><h3>pro</h3></div><span class="led"></span></div>
+        <div class="price"><span class="v">449</span><span class="u">₽</span></div>
+        <div class="permo"></div>
+        <ul class="sheet">
+          <li><span>устройства</span><span>10</span></li>
+          <li><span>страны</span><span>nl · fr · us · es</span></li>
+          <li><span>трафик</span><span>без лимита</span></li>
+          <li><span>youtube</span><span>без рекламы</span></li>
+          <li><span>ru-вход *</span><span>100 гб / мес</span></li>
+        </ul>
+        <a class="btn" href="#login">выбрать pro</a>
+      </article>
+    </div>
+    <p class="foot-note">* формулировку для pro согласуем с юристом: описание этой функции на публичной странице ограничено законом. цены взяты из текущего справочника бота (core/plans.py, релиз 3.0).</p>
+    <div class="pay-row caps"><span>оплата: сбп · карта</span><span>через юkassa</span><span>чек на email по 54-фз</span><span>автопродление можно выключить</span></div>
+  </div>
+</section>
+
+<section class="band" id="cabinet">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>кабинет <span class="example">пример</span></h2>
+      <p>экран устройства, а не таблица: сколько дней осталось, сколько трафика ушло, какие узлы живы. ссылку на подписку копируешь в одно нажатие.</p>
+    </div>
+    <div class="cab">
+      <div class="screen" aria-label="Пример экрана кабинета">
+        <div class="scr-top"><span class="on">● подписка активна</span><span>standard · до 28.10.2026</span></div>
+        <div class="days"><span class="big">35</span><span class="lbl">дней<br>осталось</span></div>
+        <div class="meter">
+          <div class="row"><span>трафик за сентябрь</span><span>84.2 гб</span></div>
+          <div class="bars" id="bars"></div>
+        </div>
+        <div class="nodes" id="nodes"></div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <h4>ссылка подписки</h4>
+          <div class="link-box"><code id="sublink">https://sub.crs-projects.com/k3f9x2a7q1</code><button type="button" id="copy">копировать</button></div>
+          <div class="kv"><span>приложения</span><b>happ · karing · clash mi</b></div>
+        </div>
+        <div class="panel">
+          <h4>устройства <span class="mono" style="font-size:13px;color:var(--ink-2)">3 / 5</span></h4>
+          <div class="slots"><i class="u"></i><i class="u"></i><i class="u"></i><i></i><i></i></div>
+          <div class="kv"><span>iphone 15</span><b>сегодня</b></div>
+          <div class="kv"><span>macbook air</span><b>вчера</b></div>
+          <div class="kv"><span>android tv</span><b>12 дней назад</b></div>
+        </div>
+        <div class="panel">
+          <h4>оплаты</h4>
+          <div class="kv"><span>28.09 · standard · 1 мес</span><b>249 ₽</b></div>
+          <div class="kv"><span>28.08 · standard · 1 мес</span><b>249 ₽</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="hair">
+
+<section class="band" id="login">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>вход</h2>
+      <p>один аккаунт, три способа войти. если в боте уже есть подписка, после входа через telegram она сразу появится здесь.</p>
+    </div>
+    <div class="login">
+      <div class="lg">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#0f0e12"/><path d="M10 19.5l18-7-3 16-5.5-4.2-3 2.9.4-4.6 8.2-7.6-10 6.3z" fill="#f6f8f7"/></svg>
+        <h3>telegram</h3>
+        <p>подтверждение в самом telegram, пароль не нужен. аккаунт сразу связан с ботом.</p>
+        <button class="btn solid" type="button">войти через telegram</button>
+      </div>
+      <div class="lg">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="8" width="34" height="24" rx="3" fill="none" stroke="#0f0e12" stroke-width="1.5"/><path d="M3 10l17 12 17-12" fill="none" stroke="#0f0e12" stroke-width="1.5"/></svg>
+        <h3>email и пароль</h3>
+        <p>для тех, у кого нет telegram. telegram можно привязать позже, в настройках.</p>
+        <button class="btn" type="button">войти по email</button>
+      </div>
+      <div class="lg">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="15" cy="13" r="7" fill="none" stroke="#0f0e12" stroke-width="1.5"/><path d="M3 34c1-7 6-11 12-11 3 0 5.5 1 7.5 2.5" fill="none" stroke="#0f0e12" stroke-width="1.5"/><circle cx="30" cy="25" r="4" fill="#f05a24"/><path d="M30 29v7m0-3h3" stroke="#0f0e12" stroke-width="1.5" fill="none"/></svg>
+        <h3>паскей</h3>
+        <p>face id или отпечаток пальца. добавляется в кабинете после первого входа.</p>
+        <button class="btn" type="button">войти по паскею</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap fgrid">
+    <div><div class="fbrand">crs<b>·</b>vpn</div><p style="margin:12px 0 0;max-width:30ch">реквизиты продавца появятся здесь после проверки юристом.</p></div>
+    <div><h5>документы</h5><a href="#top">публичная оферта</a><a href="#top">политика обработки данных</a><a href="#top">cookie</a></div>
+    <div><h5>помощь</h5><a href="#top">как подключить</a><a href="#top">частые вопросы</a><a href="#top">поддержка в telegram</a></div>
+    <div><h5>статус</h5><a href="#specs">9 из 9 узлов на связи</a><a href="#top">история сбоев</a></div>
+  </div>
+</footer>
+
+<aside class="cookie" id="cookie" aria-label="Настройки cookie">
+  <div class="hd"><span><i></i>cookie</span><span>01 / 01</span></div>
+  <p>необходимые cookie нужны для входа и оплаты. аналитику включаем только с твоего согласия. <a href="#top">подробнее</a></p>
+  <div class="opts" id="ck-opts" hidden>
+    <label>необходимые <input type="checkbox" id="ck-req" checked disabled></label>
+    <label>аналитика <input type="checkbox" id="ck-an"></label>
+  </div>
+  <div class="row" id="ck-main"><button type="button" id="ck-no">только необходимые</button><button type="button" class="solid" id="ck-all">принять все</button></div>
+  <div class="row"><button type="button" id="ck-set" style="flex:none;border:0;padding:4px 0;color:#8c8b92;font-size:12px">настроить</button></div>
+</aside>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+  var NS="http://www.w3.org/2000/svg";
+  function el(tag,attrs,parent){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+
+  // speaker grille
+  var g=document.getElementById("grille");
+  for(var r=0;r<9;r++)for(var c=0;c<6;c++)el("circle",{cx:306+c*16,cy:58+r*17,r:4.2,fill:"#2a292e"},g);
+
+  // vu meter inside display
+  var vu=document.getElementById("vu");
+  var vuBars=[];
+  for(var i=0;i<16;i++){vuBars.push(el("rect",{x:56+i*13.4,y:176,width:9,height:14,rx:1,fill:i>12?"#f05a24":"#f2f2ee",opacity:i<10?1:.18},vu));}
+
+  // exit keys
+  var nodes={NL:["NL–1",38],FR:["FR–2",44],US:["US–3",112],ES:["ES–1",61],RU:["RU–1",9]};
+  var codes=["NL","FR","US","ES","RU"];
+  var keys=document.getElementById("keys");
+  codes.forEach(function(code,idx){
+    var x=40+idx*69, y=262;
+    var k=el("g",{class:"dkey"+(idx===0?" on":""),"data-c":code,role:"button",tabindex:"0","aria-label":"Выход "+code},keys);
+    el("rect",{x:x,y:y,width:58,height:58,rx:9,fill:"#bfc2c1"},k);
+    el("rect",{class:"face",x:x+3,y:y+2,width:52,height:52,rx:8,fill:"#2a292e"},k);
+    var t=el("text",{x:x+29,y:y+34,"text-anchor":"middle","font-family":"JetBrains Mono, monospace","font-size":"15",fill:"#f2f2ee","letter-spacing":"1"},k);t.textContent=code;
+    el("circle",{class:"lamp",cx:x+29,cy:y+72,r:3.5,fill:idx===0?"#f05a24":"#bfc2c1"},k);
+    var note=el("text",{x:x+29,y:y+92,"text-anchor":"middle","font-family":"JetBrains Mono, monospace","font-size":"8.5",fill:"#9a9da0","letter-spacing":"1"},k);
+    note.textContent=code==="RU"?"PRO":"EXIT";
+  });
+
+  // device slots
+  var sl=document.getElementById("slots");
+  for(var s=0;s<5;s++)el("rect",{x:246+s*27,y:438,width:20,height:28,rx:4,fill:s<3?"#0f0e12":"none",stroke:"#9a9da0"},sl);
+
+  var on=true, current="NL";
+  function render(){
+    var n=nodes[current];
+    document.getElementById("d-node").textContent=on?n[0]:"— — —";
+    document.getElementById("d-ms").textContent=on?("PING "+n[1]+" MS · XHTTP"):"НЕТ СОЕДИНЕНИЯ";
+    var st=document.getElementById("d-state");
+    st.textContent=on?"● ON":"○ OFF";st.setAttribute("fill",on?"#f05a24":"#6d6c73");
+    document.querySelector("#power .ring").setAttribute("fill",on?"#f05a24":"#8c8f8e");
+    var lvl=on?Math.max(3,Math.round(13-n[1]/12)):0;
+    vuBars.forEach(function(b,i){b.setAttribute("opacity",i<lvl?1:.18);});
+    document.querySelectorAll(".dkey").forEach(function(k){
+      var a=k.getAttribute("data-c")===current;k.classList.toggle("on",a);
+      k.querySelector(".lamp").setAttribute("fill",a&&on?"#f05a24":"#bfc2c1");
+    });
+  }
+  function pick(e){var k=e.currentTarget;current=k.getAttribute("data-c");on=true;render();}
+  document.querySelectorAll(".dkey").forEach(function(k){
+    k.addEventListener("click",pick);
+    k.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();pick(e);}});
+  });
+  var pw=document.getElementById("power");
+  function toggle(){on=!on;render();}
+  pw.addEventListener("click",toggle);
+  pw.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});
+  render();
+
+  // plans: real prices from core/plans.py
+  var PRICES={lite:{1:129,3:329,6:599,12:1099},standard:{1:249,3:649,6:1199,12:2199},pro:{1:449,3:1199,6:2199,12:3999}};
+  function setPeriod(m){
+    document.querySelectorAll(".period button").forEach(function(b){b.setAttribute("aria-pressed",String(+b.dataset.m===m));});
+    document.querySelectorAll(".plan").forEach(function(p){
+      var code=p.dataset.plan, v=PRICES[code][m];
+      p.querySelector(".price .v").textContent=v.toLocaleString("ru-RU");
+      var per=Math.round(v/m), base=PRICES[code][1];
+      p.querySelector(".permo").textContent=m===1?"за месяц":(per+" ₽ в месяц · "+m+" мес · выгода "+Math.round((1-per/base)*100)+"%");
+    });
+  }
+  document.querySelectorAll(".period button").forEach(function(b){b.addEventListener("click",function(){setPeriod(+b.dataset.m);});});
+  setPeriod(1);
+
+  // cabinet bars (example: 84.2 of 120 scale)
+  var bars=document.getElementById("bars");
+  for(var j=0;j<32;j++){var ib=document.createElement("i");if(j<22)ib.className="f";if(j===22)ib.className="w";bars.appendChild(ib);}
+  var list=[["nl–1",38],["nl–2",41],["fr–1",47],["fr–2",44],["us–3",112],["es–1",61]];
+  var nd=document.getElementById("nodes");
+  list.forEach(function(n){var d=document.createElement("div");d.className="node";d.innerHTML='<span>'+n[0]+'</span><span class="ms">'+n[1]+' ms</span><span class="st"></span>';nd.appendChild(d);});
+
+  // copy link
+  var toast=document.getElementById("toast"), tt;
+  function say(t){toast.textContent=t;toast.hidden=false;clearTimeout(tt);tt=setTimeout(function(){toast.hidden=true;},1800);}
+  document.getElementById("copy").addEventListener("click",function(){
+    var txt=document.getElementById("sublink").textContent;
+    var p=navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(txt):Promise.reject();
+    p.then(function(){say("ссылка скопирована");}).catch(function(){
+      var r=document.createRange();r.selectNodeContents(document.getElementById("sublink"));var s=window.getSelection();s.removeAllRanges();s.addRange(r);say("выделено, нажми ⌘C");
+    });
+  });
+
+  // cookie plate
+  var ck=document.getElementById("cookie");
+  try{if(localStorage.getItem("crs-cookie"))ck.hidden=true;}catch(e){}
+  function done(v){try{localStorage.setItem("crs-cookie",v);}catch(e){} ck.hidden=true; say(v==="none"?"только необходимые":"настройки сохранены");}
+  document.getElementById("ck-set").addEventListener("click",function(){var o=document.getElementById("ck-opts");o.hidden=!o.hidden;this.textContent=o.hidden?"настроить":"сохранить выбор";if(o.hidden)done(document.getElementById("ck-an").checked?"all":"none");});
+  document.getElementById("ck-all").addEventListener("click",function(){done("all");});
+  document.getElementById("ck-no").addEventListener("click",function(){done("none");});
+  
+})();
+</script>
