@@ -1,4 +1,5 @@
 import AuthShell from "@/components/auth/AuthShell";
+import GoogleLogin from "@/components/auth/GoogleLogin";
 import EmailAuth from "@/components/auth/EmailAuth";
 import PasskeyLogin from "@/components/auth/PasskeyLogin";
 import TelegramLogin from "@/components/auth/TelegramLogin";
@@ -30,6 +31,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <h3 className="caps">02 · email</h3>
         <EmailAuth next={next} />
       </section>
+      <GoogleLogin next={next} />
       <section className="method">
         <h3 className="caps">03 · паскей</h3>
         <PasskeyLogin next={next} />

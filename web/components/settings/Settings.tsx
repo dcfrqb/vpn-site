@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { startRegistration, type PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import LogoutButton from "@/components/auth/LogoutButton";
+import GoogleLogin from "@/components/auth/GoogleLogin";
 import TelegramLogin from "@/components/auth/TelegramLogin";
 import { api, checkPassword, isPasskeyCancel, PASSWORD_MIN, splitOptions } from "@/lib/client";
 import { ago, date, shortAgent } from "@/lib/format";
@@ -248,6 +249,29 @@ function PasskeysBlock({ account }: { account: Account }) {
   );
 }
 
+function GoogleBlock({ account }: { account: Account }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<Msg>(null);
+  const unlink = async () => {
+    setBusy(true);
+    const r = await api("/api/me/google", { method: "DELETE" });
+    setBusy(false);
+    if (!r.ok) { setMsg({ kind: "err", text: r.message }); return; }
+    reload();
+  };
+  if (!account.google) return <GoogleLogin linking />;
+  return (
+    <section className="set-block">
+      <div className="set-head"><h3>google</h3><p className="note">вход без отдельного пароля сайта.</p></div>
+      <div className="form">
+        <p className="mono">{account.google}</p>
+        <button className="btn" type="button" disabled={busy} onClick={unlink}>отвязать Google</button>
+        <Status msg={msg} />
+      </div>
+    </section>
+  );
+}
+
 function SessionsBlock({ sessions }: { sessions: SessionInfo[] | null }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
@@ -300,6 +324,7 @@ export default function Settings({ account, sessions }: { account: Account; sess
       <EmailBlock account={account} />
       <PasswordBlock account={account} />
       <TelegramBlock account={account} />
+      <GoogleBlock account={account} />
       <PasskeysBlock account={account} />
       <SessionsBlock sessions={sessions} />
     </div>

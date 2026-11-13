@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     webauthn_rp_id: str = "vpn.crs-projects.com"
     webauthn_rp_name: str = "CRS VPN"
 
+    google_client_id: str = ""
+
     # mail; empty host = letters stay in web.outbox
     smtp_host: str = ""
     smtp_port: int = 587

@@ -461,7 +461,14 @@ def test_rewrite_sub_url():
 # ---------- live gateway ----------
 
 
-def test_live_cabinet_composes_bot_and_panel(caplog):
+def test_live_cabinet_composes_bot_and_panel(caplog, monkeypatch):
+    # Keep the dated fixture active regardless of the day the suite is run.
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 9, 23, 12, tzinfo=UTC).astimezone(tz)
+
+    monkeypatch.setattr("app.gateway.live.datetime", Clock)
     caplog.set_level("DEBUG")
     cab = run(make_live().cabinet(TG))
     assert cab.partial is False and cab.errors == []
