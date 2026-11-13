@@ -22,7 +22,7 @@ Out of scope here: payments (needs YooKassa test shop keys), admin (stage 4). Re
 
 ## Security rules
 
-- Passwords: argon2id (argon2-cffi defaults), min length 10, max 128, reject if equal to email.
+- Passwords: argon2id (argon2-cffi defaults), min length 8, max 128, reject if equal to email.
 - Session: 32-byte random token, cookie `__Host-sid` (Secure, HttpOnly, SameSite=Lax, Path=/), 30 days, sliding `last_seen_at`; DB stores only sha256. Cookie name configurable (`SESSION_COOKIE`) for local http dev.
 - New session id on every login; logout revokes it; "sign out everywhere" revokes all.
 - CSRF: every non-GET `/api/*` request must carry `Origin` equal to `PUBLIC_ORIGIN` (403 otherwise). SameSite=Lax as second layer.
