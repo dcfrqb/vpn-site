@@ -1,9 +1,10 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 
-from app import db, errors
+from app import db, errors, mailer
 from app.gateway import close_gateway
 from app.routers import (
     auth,
@@ -24,9 +25,13 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await db.open_pool()
+    worker = asyncio.create_task(mailer.delivery_loop(), name="mail-delivery")
     try:
         yield
     finally:
+        worker.cancel()
+        with suppress(asyncio.CancelledError):
+            await worker
         await close_gateway()
         await db.close_pool()
 

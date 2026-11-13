@@ -369,7 +369,12 @@ def test_register_rate_limit(client):
 
 def test_migrations_recorded(client):
     rows = run_sql("select version from web.schema_migrations")
-    assert [r["version"] for r in rows] == ["0001_init", "0002_tg_app_login", "0003_google_login"]
+    assert [r["version"] for r in rows] == [
+        "0001_init",
+        "0002_tg_app_login",
+        "0003_google_login",
+        "0004_mail_delivery",
+    ]
 
 
 def test_email_check(client):
