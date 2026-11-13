@@ -28,8 +28,8 @@ export default async function Home() {
               <i /> crs–01 · private network
             </div>
             <h1>
-              подключил
-              <br />и <em>забыл.</em>
+              частная
+              <br />сеть
             </h1>
             <p className="lede">частная сеть на своих серверах в {exits.length} странах. одна ссылка на все устройства, без лимита трафика и рекламы на youtube.</p>
             <div className="btns">
