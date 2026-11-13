@@ -9,6 +9,18 @@ log = logging.getLogger(__name__)
 
 # User-facing texts: Russian, informal, no letter "yo".
 MESSAGES = {
+    "price_changed": "Цена изменилась. Обнови страницу и проверь сумму",
+    "checkout_unavailable": "Оплата сейчас недоступна. Попробуй позже",
+    "checkout_busy": "Заказ еще обрабатывается. Подожди немного",
+    "plan_unavailable": "Такой тариф или срок сейчас недоступен",
+    "account_conflict": "Связь аккаунтов требует проверки. Обратись в поддержку",
+    "order_not_found": "Заказ не найден",
+    "order_conflict": "Данные заказа изменились. Обнови страницу",
+    "order_in_progress": "У тебя уже есть незавершенный заказ. Открой его перед новой покупкой",
+    "payment_unavailable": "Не получилось проверить оплату. Попробуй позже",
+    "payment_mismatch": "Оплата требует проверки. Обратись в поддержку",
+    "subscription_needs_review": "Подписка требует проверки. Обратись в поддержку",
+    "provisioning_pending": "Оплата получена, подключение еще готовится",
     "invalid_request": "Проверь данные в форме",
     "forbidden": "Нет доступа",
     "invalid_email": "Похоже, в email ошибка",

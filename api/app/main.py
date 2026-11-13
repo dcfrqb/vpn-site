@@ -5,7 +5,17 @@ from fastapi import FastAPI
 
 from app import db, errors
 from app.gateway import close_gateway
-from app.routers import auth, cabinet, google_login, health, me, public, tg_app, tg_bot_bridge
+from app.routers import (
+    auth,
+    cabinet,
+    checkout,
+    google_login,
+    health,
+    me,
+    public,
+    tg_app,
+    tg_bot_bridge,
+)
 from app.security import OriginCheckMiddleware
 
 logging.basicConfig(level=logging.INFO)
@@ -26,5 +36,5 @@ app = FastAPI(
 )
 app.add_middleware(OriginCheckMiddleware)
 errors.install(app)
-for r in (health, public, auth, google_login, tg_app, tg_bot_bridge, me, cabinet):
+for r in (health, public, auth, checkout, google_login, tg_app, tg_bot_bridge, me, cabinet):
     app.include_router(r.router, prefix="/api")
