@@ -25,6 +25,7 @@ def test_plans_match_bot_catalog():
 
 def test_network_counts():
     net = client.get("/api/network").json()
+    assert net["demo"] is True
     assert net["nodes_total"] == len(net["nodes"])
     assert net["exit_countries"] == ["nl", "fr", "us", "es"]
 

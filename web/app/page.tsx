@@ -200,8 +200,8 @@ export default async function Home() {
             <a href="https://t.me/dcfrq">поддержка в telegram</a>
           </div>
           <div>
-            <h5>статус</h5>
-            <a href="#specs">{net ? `${net.nodes_online} из ${net.nodes_total} узлов на связи` : "статус недоступен"}</a>
+            <h5>сервис</h5>
+            <a href="#specs">устройство сети</a>
           </div>
         </div>
       </footer>

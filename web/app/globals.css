@@ -525,3 +525,6 @@ img{max-width:100%}
 
 .login .lg{min-width:0}
 .login .btn{max-width:100%;white-space:normal;text-align:center}
+
+.device .vu rect{transition:opacity 700ms ease}
+@media(prefers-reduced-motion:reduce){.device .vu rect{transition:none}}

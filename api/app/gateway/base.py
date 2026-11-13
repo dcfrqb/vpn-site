@@ -22,6 +22,7 @@ class Node(BaseModel):
 
 
 class NetworkStatus(BaseModel):
+    demo: bool = True  # Public network block is illustrative, not monitoring data.
     nodes_total: int
     nodes_online: int
     exit_countries: list[str]
