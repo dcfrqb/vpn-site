@@ -1,5 +1,7 @@
 """Google login uses a real isolated Postgres; external Google tokens are mocked."""
 
+from uuid import UUID
+
 import pytest
 
 from app import google_identity
@@ -48,15 +50,58 @@ def test_register_repeat_and_last_method(client, google):
     assert len(run_sql("select * from web.accounts")) == 1
 
 
-def test_existing_email_requires_link(client, google):
+def test_existing_email_auto_login_preserves_account(client, google):
+    from tests.conftest import telegram_payload
+
     acc = register(client, "new@gmail.com").json()["account"]
+    client.post("/api/auth/telegram", json=telegram_payload())
+    old_hash = run_sql("select password_hash from web.accounts")[0]["password_hash"]
+    client.post("/api/auth/logout")
+    result = login(client)
+    assert result.status_code == 200
+    linked = result.json()["account"]
+    assert linked["id"] == acc["id"]
+    assert linked["email_verified"] is True
+    assert linked["telegram"]["id"] == 4242
+    assert linked["google"] == "new@gmail.com"
+    assert client.get("/api/me").json()["account"]["id"] == acc["id"]
+    assert len(run_sql("select * from web.accounts")) == 1
+    assert run_sql("select password_hash from web.accounts")[0]["password_hash"] == old_hash
+    client.post("/api/auth/logout")
+    assert login(client).json()["account"]["id"] == acc["id"]
+
+
+def test_existing_third_party_email_requires_link(client, google):
+    google.update(email="new@example.com", authoritative=False)
+    acc = register(client, "new@example.com").json()["account"]
     client.post("/api/auth/logout")
     assert login(client).json()["error"] == "google_link_required"
     assert client.get("/api/me").status_code == 401
-    client.post("/api/auth/login", json={"email": "new@gmail.com", "password": PASSWORD})
+    assert not run_sql("select * from web.google_identities")
+    client.post("/api/auth/login", json={"email": "new@example.com", "password": PASSWORD})
     assert login(client).json()["account"]["id"] == acc["id"]
     assert client.delete("/api/me/google").status_code == 204
-    assert client.get("/api/me").json()["account"]["google"] is None
+
+
+def test_existing_email_does_not_replace_other_google(client, google):
+    login(client)
+    client.post("/api/auth/logout")
+    google["sub"] = "another-google"
+    assert login(client).json()["error"] == "google_taken"
+    assert client.get("/api/me").status_code == 401
+    assert run_sql("select subject from web.google_identities")[0]["subject"] == "google-123"
+
+
+def test_bound_subject_wins_over_changed_email(client, google):
+    owner = login(client).json()["account"]
+    client.post("/api/auth/logout")
+    other = register(client, "another@gmail.com").json()["account"]
+    client.post("/api/auth/logout")
+    google["email"] = "another@gmail.com"
+    assert login(client).json()["account"]["id"] == owner["id"]
+    assert run_sql("select id from web.accounts where email='another@gmail.com'")[0]["id"] == UUID(
+        other["id"]
+    )
 
 
 def test_google_taken_and_session_bound_challenge(client, google):
@@ -125,12 +170,23 @@ def test_claims_rejected(monkeypatch, changes):
     assert exc.value.code == "google_invalid"
 
 
-def test_claims_verified(monkeypatch):
+@pytest.mark.parametrize(
+    "email,hd,authoritative",
+    [
+        ("a@gmail.com", None, True),
+        ("a@example.com", "example.com", True),
+        ("a@example.com", None, False),
+    ],
+)
+def test_claims_verified(monkeypatch, email, hd, authoritative):
     import asyncio
 
-    claims = {"sub": "123", "email": "a@gmail.com", "email_verified": True, "nonce": "expected"}
+    claims = {"sub": "123", "email": email, "email_verified": True, "nonce": "expected", "hd": hd}
     monkeypatch.setattr(google_identity, "_verify", lambda *_: claims)
-    assert asyncio.run(google_identity.verify("token", "client", "expected"))["authoritative"]
+    assert (
+        asyncio.run(google_identity.verify("token", "client", "expected"))["authoritative"]
+        is authoritative
+    )
 
 
 def test_invalid_signature_and_transport(monkeypatch):
