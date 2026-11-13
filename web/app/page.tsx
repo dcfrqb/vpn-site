@@ -31,7 +31,7 @@ export default async function Home() {
               частная
               <br />сеть
             </h1>
-            <p className="lede">частная сеть на своих серверах в {exits.length} странах. одна ссылка на все устройства, без лимита трафика и рекламы на youtube.</p>
+            <p className="lede">свои серверы в {exits.length} странах. одна ссылка на все устройства, без лимита трафика и рекламы на youtube.</p>
             <div className="btns">
               <a className="btn solid" href="#plans">
                 выбрать тариф {minPrice && <span className="k">от {minPrice} ₽</span>}
