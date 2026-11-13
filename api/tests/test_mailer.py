@@ -1,7 +1,9 @@
 import asyncio
+import base64
 import smtplib
 import ssl
 import time
+from email import message_from_bytes
 from uuid import uuid4
 
 import pytest
@@ -147,3 +149,76 @@ def test_smtp_verifies_tls_and_recipient(port, monkeypatch):
     assert contexts[0].verify_mode == ssl.CERT_REQUIRED and contexts[0].check_hostname
     assert bool(starts) == (port == 587)
     assert messages[0]["Message-ID"] == f"<crs-vpn-{key}@example.com>"
+
+
+def test_gmail_https_sends_mime_with_minimal_scope(monkeypatch):
+    from app.config import Settings
+
+    settings = Settings(
+        mail_transport="gmail_api",
+        gmail_client_id="client-id",
+        gmail_client_secret="client-secret",
+        gmail_refresh_token="refresh-only",
+        gmail_sender="sender@example.com",
+    )
+    monkeypatch.setattr(mailer, "get_settings", lambda: settings)
+    captured = {}
+
+    class Credentials:
+        def __init__(self, **kwargs):
+            captured["credentials"] = kwargs
+            self.token = "access-only"
+
+        def refresh(self, request):
+            captured["refreshed"] = True
+
+    def handle(request):
+        import json
+
+        import httpx
+
+        captured["request"] = request
+        captured["message"] = message_from_bytes(
+            base64.urlsafe_b64decode(json.loads(request.content)["raw"])
+        )
+        return httpx.Response(200, json={"id": "gmail-message-id"})
+
+    import httpx
+
+    client_class = httpx.Client
+    monkeypatch.setattr(mailer, "Credentials", Credentials)
+    monkeypatch.setattr(
+        mailer.httpx,
+        "Client",
+        lambda **kw: client_class(transport=httpx.MockTransport(handle), **kw),
+    )
+    key = uuid4()
+    assert mailer.configured()
+    mailer._gmail_send("receiver@example.com", "subject", "body", key)
+    assert captured["refreshed"]
+    assert captured["credentials"]["scopes"] == ["https://www.googleapis.com/auth/gmail.send"]
+    assert (
+        str(captured["request"].url)
+        == "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+    )
+    assert captured["request"].headers["Authorization"] == "Bearer access-only"
+    assert captured["message"]["To"] == "receiver@example.com"
+    assert captured["message"]["Message-ID"] == f"<crs-vpn-{key}@example.com>"
+
+
+def test_gmail_failure_keeps_queue_for_retry(client, test_settings, monkeypatch):
+    from google.auth.exceptions import RefreshError
+
+    register(client)
+
+    def failure(*args):
+        raise RefreshError("private token provider response")
+
+    monkeypatch.setattr(mailer, "_gmail_send", failure)
+    monkeypatch.setattr(test_settings, "mail_transport", "gmail_api")
+    for field in ("gmail_client_id", "gmail_client_secret", "gmail_refresh_token", "gmail_sender"):
+        monkeypatch.setattr(test_settings, field, "test-value")
+    assert deliver(client, test_settings)
+    row = queue_row()
+    assert row["sent_at"] is None
+    assert row["attempts"] == 1 and row["last_error"] == "RefreshError"

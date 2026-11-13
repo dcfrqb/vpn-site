@@ -28,3 +28,13 @@
 5. Удалить только созданные в этой проверке тестовые записи.
 
 На действующем сайте до развертывания этой ветки остается прежний отправитель без автоматического повтора. Проверку нового worker не заменяет проверка текущего production.
+
+## Gmail API через HTTPS
+
+`MAIL_TRANSPORT=gmail_api` выбирает отправку по HTTPS вместо SMTP. Нужны `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER`. Эти значения не связаны с публичным `GOOGLE_CLIENT_ID` входа пользователей. Пропущенные параметры отключают worker, автоматического перехода на SMTP нет.
+
+Отдельный OAuth-клиент оператора получает только `https://www.googleapis.com/auth/gmail.send`. Чтение почты, Drive и полный scope `mail.google.com` не требуются. Подтверждение выполняется владельцем один раз через локальный callback с PKCE и state, после чего refresh token хранится в приватном окружении сервера. Пароль приложения SMTP для Gmail API не подходит.
+
+В режиме Google OAuth `Testing` refresh token с Gmail scope истекает через 7 дней. Это подходит для проверки, но перед выпуском нужно завершить настройку приложения и решить вопрос постоянного доступа. Даже вне Testing токен может быть отозван или перестать работать после смены пароля Google. Очередь сохраняет письмо при ошибке авторизации, однако для доставки понадобится повторная авторизация владельца.
+
+Ссылки: [отправка Gmail](https://developers.google.com/workspace/gmail/api/guides/sending), [scopes](https://developers.google.com/workspace/gmail/api/auth/scopes), [срок refresh token](https://developers.google.com/identity/protocols/oauth2#expiration).
