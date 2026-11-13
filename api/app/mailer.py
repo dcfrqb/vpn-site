@@ -1,14 +1,21 @@
 """Durable authentication mail queue, verified TLS, bounded retry and expiring links."""
 
 import asyncio
+import base64
 import logging
 import smtplib
 import ssl
 from datetime import timedelta
 from email.message import EmailMessage
 from email.utils import parseaddr
+from functools import partial
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
+
+import httpx
+from google.auth.exceptions import GoogleAuthError
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 from app import db
 from app.config import get_settings
@@ -58,15 +65,19 @@ async def send(conn, to: str, template: tuple[str, str], link: str) -> None:
     )
 
 
-def _smtp_send(to: str, subject: str, body: str, delivery_key) -> None:
-    s = get_settings()
-    sender = s.smtp_from or s.smtp_user
+def _message(sender: str, to: str, subject: str, body: str, delivery_key) -> EmailMessage:
     domain = parseaddr(sender)[1].rpartition("@")[2] or "vpn.crs-projects.com"
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = sender, to, subject
     msg["Message-ID"] = f"<crs-vpn-{delivery_key}@{domain}>"
     msg["Auto-Submitted"] = "auto-generated"
     msg.set_content(body)
+    return msg
+
+
+def _smtp_send(to: str, subject: str, body: str, delivery_key) -> None:
+    s = get_settings()
+    msg = _message(s.smtp_from or s.smtp_user, to, subject, body, delivery_key)
     context = ssl.create_default_context()
     if s.smtp_port == 465:
         transport = smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, timeout=20, context=context)
@@ -80,6 +91,40 @@ def _smtp_send(to: str, subject: str, body: str, delivery_key) -> None:
         refused = smtp.send_message(msg)
         if refused:
             raise smtplib.SMTPRecipientsRefused(refused)
+
+
+def _gmail_send(to: str, subject: str, body: str, delivery_key) -> None:
+    s = get_settings()
+    credentials = Credentials(
+        token=None,
+        refresh_token=s.gmail_refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",  # noqa: S106 (public endpoint)
+        client_id=s.gmail_client_id,
+        client_secret=s.gmail_client_secret,
+        scopes=["https://www.googleapis.com/auth/gmail.send"],
+    )
+    # google-auth performs refresh only; no mailbox read scopes are requested.
+    credentials.refresh(partial(Request(), timeout=20))
+    msg = _message(s.gmail_sender, to, subject, body, delivery_key)
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
+    with httpx.Client(timeout=20, follow_redirects=False) as client:
+        response = client.post(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+            headers={"Authorization": f"Bearer {credentials.token}"},
+            json={"raw": raw},
+        )
+        response.raise_for_status()
+        if not response.json().get("id"):
+            raise OSError("Gmail response missing message id")
+
+
+def configured() -> bool:
+    s = get_settings()
+    if s.mail_transport == "gmail_api":
+        return all(
+            (s.gmail_client_id, s.gmail_client_secret, s.gmail_refresh_token, s.gmail_sender)
+        )
+    return bool(s.smtp_host)
 
 
 async def _claim():
@@ -131,7 +176,7 @@ async def _claim():
 
 async def deliver_one() -> bool:
     """True means a queue row was handled, False means idle/disabled."""
-    if not get_settings().smtp_host or db.pool is None:
+    if not configured() or db.pool is None:
         return False
     row = await _claim()
     if row is None:
@@ -139,10 +184,11 @@ async def deliver_one() -> bool:
     if row is False:
         return True
     try:
+        transport = _gmail_send if get_settings().mail_transport == "gmail_api" else _smtp_send
         await asyncio.to_thread(
-            _smtp_send, row["to_email"], row["subject"], row["body"], row["delivery_key"]
+            transport, row["to_email"], row["subject"], row["body"], row["delivery_key"]
         )
-    except (OSError, smtplib.SMTPException) as exc:
+    except (OSError, smtplib.SMTPException, GoogleAuthError, httpx.HTTPError) as exc:
         # SMTP error text can include addresses or provider responses; store type only.
         code = type(exc).__name__
         delay = timedelta(seconds=min(3600, 30 * 2 ** (row["attempts"] - 1)))
