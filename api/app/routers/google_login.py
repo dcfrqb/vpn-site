@@ -83,6 +83,11 @@ async def login(body: GoogleIn, request: Request, response: Response, conn: Conn
     identity = await google_identity.verify(body.credential, client_id, nonce)
     try:
         async with conn.transaction():
+            # Serialize first-time linking for the same Google identity across browsers.
+            await conn.execute(
+                "select pg_advisory_xact_lock(hashtextextended($1, 0))",
+                "google:" + identity["sub"],
+            )
             consumed = await conn.fetchval(
                 "delete from web.google_challenges where nonce_hash = $1 and expires_at > now()"
                 " and account_id is not distinct from $2::uuid returning nonce_hash",
@@ -105,18 +110,33 @@ async def login(body: GoogleIn, request: Request, response: Response, conn: Conn
             elif owner is not None:
                 account_id = owner
             else:
-                # Require explicit linking from an authenticated account; no email auto-merge.
-                if await conn.fetchval(
-                    "select id from web.accounts where email = $1", identity["email"]
-                ):
-                    raise ApiError(409, "google_link_required")
-                account_id = await conn.fetchval(
-                    "insert into web.accounts (email, email_verified_at)"
-                    " values ($1, case when $2 then now() end) returning id",
-                    identity["email"],
-                    identity["authoritative"],
+                existing = await conn.fetchrow(
+                    "select id from web.accounts where email = $1 for update", identity["email"]
                 )
-                await audit(conn, request, "register", account_id, method="google")
+                if existing:
+                    if not identity["authoritative"]:
+                        raise ApiError(409, "google_link_required")
+                    account_id = existing["id"]
+                    if await conn.fetchval(
+                        "select subject from web.google_identities where account_id = $1",
+                        account_id,
+                    ):
+                        raise ApiError(409, "google_taken")
+                    await conn.execute(
+                        "update web.accounts set email_verified_at ="
+                        " coalesce(email_verified_at, now())"
+                        " where id = $1",
+                        account_id,
+                    )
+                    await audit(conn, request, "google_link", account_id, method="verified_email")
+                else:
+                    account_id = await conn.fetchval(
+                        "insert into web.accounts (email, email_verified_at)"
+                        " values ($1, case when $2 then now() end) returning id",
+                        identity["email"],
+                        identity["authoritative"],
+                    )
+                    await audit(conn, request, "register", account_id, method="google")
             await conn.execute(
                 "insert into web.google_identities (subject, account_id, email) values ($1,$2,$3)"
                 " on conflict (subject) do update set email = excluded.email",
