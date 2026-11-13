@@ -70,7 +70,7 @@ export default function Nav({ nodes, countries }: Props) {
         <span>
           <span className="t">вход</span>
           <span className="s">
-            telegram
+            telegram · google
             <br />
             email и пароль
             <br />
