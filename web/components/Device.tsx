@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const EXITS = [
   { code: "NL", node: "NL–1", ms: 38, tag: "EXIT" },
@@ -14,9 +14,20 @@ const MONO = "var(--mono)";
 
 export default function Device() {
   const [on, setOn] = useState(true);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const update = () => { if (!document.hidden) setTick(Date.now() / 8000); };
+    update();
+    const timer = window.setInterval(update, 8000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [current, setCurrent] = useState<(typeof EXITS)[number]["code"]>("NL");
   const exit = EXITS.find((e) => e.code === current)!;
-  const level = on ? Math.max(3, Math.round(13 - exit.ms / 12)) : 0;
+  // Cosmetic demo only. These values never represent the availability of real nodes.
+  const index = EXITS.indexOf(exit);
+  const latency = Math.max(3, Math.round(exit.ms + Math.sin(tick * .7 + index * 1.8) * exit.ms * .045 + Math.cos(tick * 1.3 + index) * 1.2));
+  const level = on ? Math.max(3, Math.min(16, Math.round(13 - latency / 12 + Math.sin(tick * .6) * .6))) : 0;
 
   const onKey = (fn: () => void) => (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -27,7 +38,7 @@ export default function Device() {
 
   return (
     <figure className="device" style={{ margin: 0 }}>
-      <svg viewBox="0 0 420 540" role="img" aria-label="Схема устройства CRS–01: дисплей, клавиши стран, кнопка питания">
+      <svg viewBox="0 0 420 540" role="img" aria-label="Демонстрация устройства CRS–01: условные значения пинга, клавиши стран и кнопка питания">
         <rect x="6" y="6" width="408" height="528" rx="30" fill="#e3e5e4" stroke="#c9cccb" />
         <g fill="#c2c5c4">
           <circle cx="30" cy="30" r="5" />
@@ -47,7 +58,7 @@ export default function Device() {
           {on ? exit.node : "— — —"}
         </text>
         <text x="56" y="152" fontFamily={MONO} fontSize="12" fill="#6d6c73" letterSpacing="1">
-          {on ? `PING ${exit.ms} MS · XHTTP` : "НЕТ СОЕДИНЕНИЯ"}
+          {on ? `PING ${latency} MS · DEMO` : "ДИСПЛЕЙ ВЫКЛЮЧЕН"}
         </text>
         <g className="vu">
           {Array.from({ length: 16 }, (_, i) => (
@@ -113,7 +124,7 @@ export default function Device() {
       </svg>
       <figcaption className="cap caps">
         <span>нажми на страну</span>
-        <span>схема, не фото</span>
+        <span>демо · значения условные</span>
       </figcaption>
     </figure>
   );

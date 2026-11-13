@@ -22,6 +22,7 @@ class Node(BaseModel):
 
 
 class NetworkStatus(BaseModel):
+    demo: bool = True  # Public network block is illustrative, not monitoring data.
     nodes_total: int
     nodes_online: int
     exit_countries: list[str]
@@ -35,7 +36,7 @@ class _Tolerant(BaseModel):
 
 
 class CabinetUser(_Tolerant):
-    telegram_id: int
+    telegram_id: int | None
     username: str | None = None
     first_name: str | None = None
     customer_since: datetime | None = None
@@ -102,7 +103,7 @@ class NodeTraffic(_Tolerant):
 
 
 class CabinetPayment(_Tolerant):
-    id: int
+    id: int | str
     created_at: datetime
     paid_at: datetime | None = None
     provider: str | None = None

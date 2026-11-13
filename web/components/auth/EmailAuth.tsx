@@ -114,7 +114,7 @@ export default function EmailAuth({ next }: { next: string }) {
           <label className="check">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
             <span>
-              даю <a href="/legal/cookies">согласие на обработку персональных данных</a>
+              даю <a href="/legal/consent">согласие на обработку персональных данных</a>
             </span>
           </label>
         </>

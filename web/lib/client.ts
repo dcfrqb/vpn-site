@@ -1,6 +1,6 @@
 "use client";
 
-export type CallResult<T> = { ok: true; status: number; data: T } | { ok: false; status: number; error: string; message: string };
+export type CallResult<T> = { ok: true; status: number; data: T } | { ok: false; status: number; error: string; message: string; order_id?: string };
 
 function minutes(sec: number) {
   const m = Math.max(1, Math.ceil(sec / 60));
@@ -32,7 +32,7 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
 
   if (res.ok) return { ok: true, status: res.status, data: payload as T };
 
-  const p = (payload ?? {}) as { error?: string; message?: string; retry_after?: number };
+  const p = (payload ?? {}) as { error?: string; message?: string; order_id?: string; retry_after?: number };
   const retry = Number(res.headers.get("retry-after") ?? p.retry_after ?? 0);
   let message = typeof p.message === "string" && p.message ? p.message : "";
   if (!message) {
@@ -42,7 +42,7 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
     else if (res.status >= 500) message = "что-то сломалось на нашей стороне. попробуй через пару минут.";
     else message = "не получилось. попробуй еще раз.";
   }
-  return { ok: false, status: res.status, error: p.error ?? `http_${res.status}`, message };
+  return { ok: false, status: res.status, error: p.error ?? `http_${res.status}`, message, order_id: typeof p.order_id === "string" ? p.order_id : undefined };
 }
 
 // WebAuthn options may come flat ({...options, challenge_id}) or wrapped ({options|publicKey, challenge_id}).

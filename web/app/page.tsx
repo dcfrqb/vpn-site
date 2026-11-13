@@ -28,10 +28,10 @@ export default async function Home() {
               <i /> crs–01 · private network
             </div>
             <h1>
-              подключил
-              <br />и <em>забыл.</em>
+              частная
+              <br />сеть
             </h1>
-            <p className="lede">частная сеть на своих серверах в {exits.length} странах. одна ссылка на все устройства, без лимита трафика и рекламы на youtube.</p>
+            <p className="lede">свои серверы в {exits.length} странах. одна ссылка на все устройства, без лимита трафика и рекламы на youtube.</p>
             <div className="btns">
               <a className="btn solid" href="#plans">
                 выбрать тариф {minPrice && <span className="k">от {minPrice} ₽</span>}
@@ -95,12 +95,12 @@ export default async function Home() {
             <p>три комплектации. чем дольше период, тем дешевле месяц.</p>
           </div>
           {plans ? <Plans plans={plans} /> : <p className="muted-note">тарифы временно недоступны, попробуй обновить страницу через минуту.</p>}
-          <p className="foot-note">* формулировку для pro согласуем с юристом.</p>
+          <p className="foot-note">* pro включает отдельный ru-вход с пакетом 150 гб в месяц.</p>
           <div className="pay-row caps">
             <span>оплата: сбп · карта</span>
             <span>через юkassa</span>
-            <span>чек на email по 54-фз</span>
-            <span>автопродление можно выключить</span>
+            <span>чек самозанятого</span>
+            <span>разовая оплата, без автосписаний</span>
           </div>
         </div>
       </section>
@@ -123,7 +123,7 @@ export default async function Home() {
         <div className="wrap">
           <div className="sec-head">
             <h2>вход</h2>
-            <p>один аккаунт, три способа войти. если в боте уже есть подписка, после входа через telegram она сразу появится здесь.</p>
+            <p>один аккаунт, четыре способа войти. если в боте уже есть подписка, после входа через telegram она сразу появится здесь.</p>
           </div>
           <div className="login">
             <div className="lg">
@@ -136,6 +136,15 @@ export default async function Home() {
               <a className="btn solid" href="/login">
                 войти через telegram
               </a>
+            </div>
+            <div className="lg">
+              <svg viewBox="0 0 40 40" aria-hidden="true">
+                <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                <text x="20" y="28" textAnchor="middle" fontSize="24" fontFamily="Arial, sans-serif" fill="currentColor">G</text>
+              </svg>
+              <h3>google</h3>
+              <p>вход без отдельного пароля сайта. для gmail аккаунт с той же почтой подхватится автоматически.</p>
+              <a className="btn" href="/login#google-login">войти через google</a>
             </div>
             <div className="lg">
               <svg viewBox="0 0 40 40" aria-hidden="true">
@@ -171,23 +180,28 @@ export default async function Home() {
             <div className="fbrand">
               crs<b className="logo-dot" aria-hidden="true" />vpn
             </div>
-            <p style={{ margin: "12px 0 0", maxWidth: "30ch" }}>реквизиты продавца появятся здесь после проверки юристом.</p>
+            <p style={{ margin: "12px 0 0", maxWidth: "30ch" }}>вопросы по подписке, оплате и данным</p>
+            <a href="mailto:dcfrqb@gmail.com">dcfrqb@gmail.com</a>
+            <a href="https://t.me/dcfrq">telegram: @dcfrq</a>
           </div>
           <div>
             <h5>документы</h5>
-            <a href="/legal/cookies">публичная оферта</a>
-            <a href="/legal/cookies">политика обработки данных</a>
+            <a href="/legal/offer">публичная оферта</a>
+            <a href="/legal/privacy">политика обработки данных</a>
+            <a href="/legal/consent">согласие на обработку данных</a>
+            <a href="/legal/refunds">оплата и возвраты</a>
+            <a href="/legal/details">реквизиты</a>
             <a href="/legal/cookies">cookie</a>
           </div>
           <div>
             <h5>помощь</h5>
             <a href="#top">как подключить</a>
             <a href="#top">частые вопросы</a>
-            <a href="#top">поддержка в telegram</a>
+            <a href="https://t.me/dcfrq">поддержка в telegram</a>
           </div>
           <div>
-            <h5>статус</h5>
-            <a href="#specs">{net ? `${net.nodes_online} из ${net.nodes_total} узлов на связи` : "статус недоступен"}</a>
+            <h5>сервис</h5>
+            <a href="#specs">устройство сети</a>
           </div>
         </div>
       </footer>
