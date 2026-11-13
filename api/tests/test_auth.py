@@ -1,6 +1,8 @@
 import time
 from uuid import UUID
 
+import pytest
+
 from tests.conftest import (
     COOKIE,
     PASSWORD,
@@ -13,6 +15,20 @@ from tests.conftest import (
 )
 
 EMAIL = "user@example.com"
+
+
+@pytest.mark.parametrize(
+    "size,accepted", [(7, False), (8, True), (9, True), (128, True), (129, False)]
+)
+def test_password_length_boundary(size, accepted):
+    from app.errors import ApiError
+    from app.security import check_password_policy
+
+    if accepted:
+        check_password_policy("x" * size, "user@example.com")
+    else:
+        with pytest.raises(ApiError):
+            check_password_policy("x" * size, "user@example.com")
 
 
 def test_register_login_logout(client):

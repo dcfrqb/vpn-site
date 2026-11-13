@@ -38,7 +38,7 @@ def normalize_email(raw: str) -> str:
 
 
 def check_password_policy(password: str, email: str | None) -> None:
-    if not 10 <= len(password) <= 128 or (email and password.strip().lower() == email.lower()):
+    if not 8 <= len(password) <= 128 or (email and password.strip().lower() == email.lower()):
         raise ApiError(400, "weak_password")
 
 

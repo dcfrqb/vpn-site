@@ -64,7 +64,7 @@ export function isPasskeyCancel(e: unknown): boolean {
   );
 }
 
-export const PASSWORD_MIN = 10;
+export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 128;
 
 export function checkPassword(pw: string, repeat: string | null, email?: string | null): string | null {
