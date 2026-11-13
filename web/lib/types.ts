@@ -7,6 +7,7 @@ export type Account = {
   email: string | null;
   email_verified: boolean;
   telegram: { id: number; username: string | null; first_name: string | null } | null;
+  google: string | null;
   has_password: boolean;
   passkeys: Passkey[];
   created_at: string;

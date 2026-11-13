@@ -4,6 +4,7 @@
 
 - Дизайн: принципы в `docs/design-principles.md`, макет в `design/mockup_v1.html`.
 - Стенд: https://vpn.crs-projects.com (закрыт паролем).
+- Вход через Google и настройка Client ID: `docs/google-login.md`.
 - Деплой и изоляция на сервере: `deploy/README.md`.
 
 ## Структура

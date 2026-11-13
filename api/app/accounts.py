@@ -156,6 +156,9 @@ async def account_json(conn, acc: asyncpg.Record) -> dict:
         "email": acc["email"],
         "email_verified": acc["email_verified_at"] is not None,
         "telegram": tg,
+        "google": await conn.fetchval(
+            "select email from web.google_identities where account_id = $1", acc["id"]
+        ),
         "has_password": acc["password_hash"] is not None,
         "passkeys": [passkey_json(k) for k in keys],
         "created_at": acc["created_at"],
@@ -176,7 +179,11 @@ async def ensure_other_login_method(conn, acc: asyncpg.Record, removing: str) ->
     passkeys = await conn.fetchval(
         "select count(*) from web.webauthn_credentials where account_id = $1", acc["id"]
     )
+    google = await conn.fetchval(
+        "select exists(select 1 from web.google_identities where account_id = $1)", acc["id"]
+    )
     left = [
+        google and removing != "google",
         acc["email"] is not None and acc["password_hash"] is not None,
         acc["telegram_id"] is not None and removing != "telegram",
         passkeys - (removing == "passkey") > 0,
