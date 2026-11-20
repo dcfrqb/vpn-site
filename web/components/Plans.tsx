@@ -66,7 +66,7 @@ export default function Plans({ plans }: { plans: Plan[] }) {
                   <span>{p.ru_entry_gb ? `${p.ru_entry_gb} гб / мес` : "—"}</span>
                 </li>
               </ul>
-              <a className="btn" href="/login?next=/cabinet">
+              <a className="btn" href={`/checkout?plan=${encodeURIComponent(p.code)}&months=${months}`}>
                 выбрать {p.title}
               </a>
             </article>

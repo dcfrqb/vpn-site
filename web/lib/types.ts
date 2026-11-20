@@ -56,7 +56,7 @@ export type CabinetDevice = {
 };
 
 export type CabinetPayment = {
-  id: number;
+  id: number | string;
   created_at: string;
   paid_at: string | null;
   provider: string | null;
@@ -72,7 +72,7 @@ export type BotCabinet = {
   generated_at: string;
   partial: boolean;
   errors: string[];
-  user: { telegram_id: number; username: string | null; first_name: string | null; customer_since: string | null };
+  user: { telegram_id: number | null; username: string | null; first_name: string | null; customer_since: string | null };
   subscriptions: CabinetSubscription[];
   devices: CabinetDevice[];
   traffic_daily: { date: string; main_bytes: number; obhod_bytes: number }[];

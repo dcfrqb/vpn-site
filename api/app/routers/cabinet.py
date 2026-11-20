@@ -3,10 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.accounts import CurrentAuth, audit
+from app.checkout_bridge import bridge
+from app.config import get_settings
 from app.db import Conn
 from app.errors import ApiError
 from app.gateway import get_gateway, is_demo
 from app.gateway.base import BotGateway, CabinetResponse, GatewayUnavailable
+from app.gateway.live import LiveGateway
 from app.gateway.mock import SCENARIOS, MockGateway
 
 router = APIRouter()
@@ -25,6 +28,13 @@ async def cabinet(
         data = await MockGateway().cabinet(telegram_id or 0, scenario=demo_scenario)
         return CabinetResponse(linked=True, demo=True, data=data)
     demo = is_demo(gw)
+    if get_settings().site_checkout_enabled:
+        if not isinstance(gw, LiveGateway):
+            raise ApiError(503, "checkout_unavailable")
+        profile = await bridge.profile(auth.account)
+        if profile is None:
+            return CabinetResponse(linked=True, demo=False)
+        return CabinetResponse(linked=True, demo=False, data=await gw.cabinet_profile(profile))
     if telegram_id is None:
         return CabinetResponse(linked=False, demo=demo)
     try:
@@ -39,10 +49,16 @@ async def delete_device(
     hwid: str, request: Request, auth: CurrentAuth, gw: Gateway, conn: Conn
 ) -> Response:
     telegram_id = auth.account["telegram_id"]
-    if telegram_id is None or not hwid or len(hwid) > 256:
+    if not hwid or len(hwid) > 256:
         raise ApiError(404, "device_not_found")
     try:
-        ok = await gw.delete_device(telegram_id, hwid)
+        if get_settings().site_checkout_enabled:
+            if not isinstance(gw, LiveGateway):
+                raise ApiError(503, "checkout_unavailable")
+            profile = await bridge.profile(auth.account)
+            ok = bool(profile) and await gw.delete_device_profile(profile, hwid)
+        else:
+            ok = telegram_id is not None and await gw.delete_device(telegram_id, hwid)
     except GatewayUnavailable:
         raise ApiError(503, "bot_unavailable") from None
     await audit(conn, request, "device_delete", auth.account_id, hwid=hwid[:6], ok=ok)

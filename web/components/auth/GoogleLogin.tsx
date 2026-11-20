@@ -14,7 +14,7 @@ declare global { interface Window { google?: { accounts: { id: Identity } } } }
 
 export default function GoogleLogin({ next = "/cabinet", linking = false }: { next?: string; linking?: boolean }) {
   const button = useRef<HTMLDivElement>(null);
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
@@ -22,7 +22,7 @@ export default function GoogleLogin({ next = "/cabinet", linking = false }: { ne
   useEffect(() => {
     let active = true;
     api<{ enabled: boolean }>("/api/auth/google/config").then((r) => {
-      if (active && r.ok) setEnabled(r.data.enabled);
+      if (active) setEnabled(r.ok && r.data.enabled);
     });
     return () => { active = false; };
   }, []);
@@ -54,9 +54,15 @@ export default function GoogleLogin({ next = "/cabinet", linking = false }: { ne
     google.renderButton(button.current, { type: "standard", theme: "outline", size: "large", text: "continue_with", locale: "ru" });
   }, [next, linking]);
 
-  if (!enabled) return null;
+  if (enabled === null) return linking ? null : <section id="google-login" className="method">
+    <h3 className="caps">google</h3><p className="note" role="status">проверяем доступность входа…</p>
+  </section>;
+  if (!enabled) return linking ? null : <section id="google-login" className="method">
+    <h3 className="caps">google</h3>
+    <p className="note">вход через google временно недоступен. используй email или другой способ.</p>
+  </section>;
   return (
-    <section className={linking ? "set-block" : "method"}>
+    <section id="google-login" className={linking ? "set-block" : "method"}>
       {linking ? <div className="set-head"><h3>google</h3><p className="note">вход без отдельного пароля сайта.</p></div> : <h3 className="caps">google</h3>}
       <div className="form">
         <Script src="https://accounts.google.com/gsi/client?hl=ru" onReady={() => { void prepare(); }} onError={() => setErr("Google не загрузился. Проверь соединение или используй другой способ входа.")} />

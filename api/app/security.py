@@ -81,6 +81,9 @@ class RateLimiter:
     """Sliding-window counter per key, in process memory (one api replica)."""
 
     LIMITS = {
+        "checkout_quote": (60, 60),
+        "checkout_start": (10, 60),
+        "checkout_status": (30, 60),
         "login": (10, 15 * 60),
         "email_check": (20, 15 * 60),
         "tg_start": (60, 15 * 60),

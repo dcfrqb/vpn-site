@@ -15,6 +15,7 @@ from urllib.parse import urlsplit, urlunsplit
 from app.gateway.base import (
     BotAccount,
     BotCabinet,
+    BotProfile,
     CabinetDevice,
     CabinetNode,
     CabinetSubscription,
@@ -126,7 +127,11 @@ class LiveGateway:
     async def _panel_ids(self, telegram_id: int, accounts: list[BotAccount]) -> dict[str, int]:
         """kind -> panel user id. A main account without a mapping is looked up by telegram id."""
         ids = {a.kind: a.panel_id for a in accounts if a.panel_id is not None}
-        if "main" not in ids and any(a.kind == "main" for a in accounts):
+        if (
+            telegram_id is not None
+            and "main" not in ids
+            and any(a.kind == "main" for a in accounts)
+        ):
             found = [u for u in await self.panel.find_user_by_telegram(telegram_id)]
             taken = set(ids.values())
             free = [u for u in found if u.id not in taken]
@@ -138,6 +143,10 @@ class LiveGateway:
         profile = await self.bot.profile(telegram_id)  # GatewayUnavailable -> 503 upstream
         if profile is None:
             return None
+        return await self.cabinet_profile(profile)
+
+    async def cabinet_profile(self, profile: BotProfile) -> BotCabinet:
+        telegram_id = profile.user.telegram_id
         # "bot": no bot profile API yet, so no payments and no obhod account
         errors: set[str] = {"bot"} if getattr(self.bot, "offline", False) else set()
         now = datetime.now(UTC)
@@ -360,8 +369,11 @@ class LiveGateway:
         profile = await self.bot.profile(telegram_id)
         if profile is None:
             return False
+        return await self.delete_device_profile(profile, hwid)
+
+    async def delete_device_profile(self, profile: BotProfile, hwid: str) -> bool:
         try:
-            ids = await self._panel_ids(telegram_id, profile.accounts)
+            ids = await self._panel_ids(profile.user.telegram_id, profile.accounts)
             for user_id in ids.values():
                 if any(d.hwid == hwid for d in await self.panel.devices(user_id, fresh=True)):
                     return await self.panel.delete_device(user_id, hwid)

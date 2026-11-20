@@ -95,8 +95,8 @@ export default async function CabinetPage({ searchParams }: { searchParams: Prom
           <div className="empty-grid">
             <div className="panel empty">
               <div className="caps step">00</div>
-              <h4>в боте пока нет подписки</h4>
-              <p className="note">telegram привязан, но в @{TG_BOT} на него еще ничего не оформлено. выбери тариф, и подписка появится здесь.</p>
+              <h4>подписки пока нет</h4>
+              <p className="note">выбери тариф и срок. после оплаты подписка и ссылка подключения появятся здесь.</p>
               <a className="btn solid" href="/#plans">
                 выбрать тариф
               </a>

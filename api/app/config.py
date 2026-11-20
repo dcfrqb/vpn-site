@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     webauthn_rp_id: str = "vpn.crs-projects.com"
     webauthn_rp_name: str = "CRS VPN"
 
+    site_checkout_enabled: bool = False
+
     google_client_id: str = ""
 
     # mail; empty host = letters stay in web.outbox
